@@ -1,7 +1,7 @@
 -- Handles SavedVariables persistence for this addon.
 -- Loaded via .toc; defines a module table `TuskUpLoot.DB`.
 
-TuskUpLoot.DB = {}
+TuskUpLoot.DB = TuskUpLoot.DB or {}
 local DB = TuskUpLoot.DB
 
 local function getDefaults()
@@ -76,6 +76,9 @@ function DB.upsertGearSet(characterKey, gearSetKey, gearSet)
     return nil
   end
   local character = TuskUpLootDB.characters[characterKey]
+  if not character then
+    return nil
+  end
   if not character.gearSets then
     character.gearSets = {}
   end

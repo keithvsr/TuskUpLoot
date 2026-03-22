@@ -1,6 +1,6 @@
 -- Handles parsing sixtyupgrades JSON exports into Lua tables.
 
-TuskUpLoot.Parser = {}
+TuskUpLoot.Parser = TuskUpLoot.Parser or {}
 
 -- Core Parsing Functions
 
@@ -8,7 +8,7 @@ local function skipWhitespace(str, pos)
     while pos <= #str do
         local char = str:sub(pos, pos)
         -- JSON whitespace is space, tab, newline, carriage return
-        if char == ' ' or char == '\t' or char == '\n' or char == '\r' then
+        if char == " " or char == "\t" or char == "\n" or char == "\r" then
             pos = pos + 1
         else
             break
@@ -66,7 +66,7 @@ local function parseString(str, pos)
 end
 
 local function parseNumber(str, pos)
-    local numStr = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*$', pos)
+    local numStr = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
     assert(numStr, "Invalid number at position " .. pos)
     return tonumber(numStr), pos + #numStr
 end

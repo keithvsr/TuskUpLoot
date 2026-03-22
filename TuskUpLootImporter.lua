@@ -1,7 +1,7 @@
 -- Handles importing sixtyupgrades JSON exports into the TuskUpLoot database.
 -- Loaded via .toc
 
-TuskUpLoot.Importer = {}
+TuskUpLoot.Importer = TuskUpLoot.Importer or {}
 local IMP = TuskUpLoot.Importer
 
 local function normalizeStringKey(name)
@@ -15,7 +15,7 @@ end
 -- organize character data from export and return a normalized key and the character data
 local function extractCharacterDataFromExport(payload)
   if type(payload) ~= "table" or type(payload.character) ~= "table" or payload.character.name == nil then
-    return nil, "invalid payload"
+    return nil, "invalid payload: missing character"
   end
   local character = payload.character
   local characterKey = normalizeStringKey(character.name)
@@ -36,7 +36,7 @@ local function extractGearSetFromExport(payload)
       or type(payload.phase) ~= "number"
       or type(payload.items) ~= "table"
   then
-    return nil, "invalid or incomplete payload"
+    return nil, "invalid or incomplete payload (gear set)"
   end
 
   local gearSetKey = normalizeStringKey(payload.name)
@@ -46,8 +46,10 @@ local function extractGearSetFromExport(payload)
     items = {},
   }
   for _, item in pairs(payload.items) do
-    local acquired = item.acquired ~= nil and item.acquired or false
-    gearSet.items[item.id] = acquired
+    if type(item) == "table" and item.id ~= nil then
+      local acquired = item.acquired ~= nil and item.acquired or false
+      gearSet.items[item.id] = acquired
+    end
   end
 
   return gearSetKey, gearSet
@@ -56,35 +58,49 @@ end
 
 local function extractItemsFromExport(payload)
   if type(payload) ~= "table" or type(payload.items) ~= "table" then
-    return nil, "invalid payload"
+    return nil, "invalid payload: items"
   end
 
   local items = {}
   for _, payloadItem in ipairs(payload.items) do
-    local item = {
-      name = payloadItem.name,
-      slot = payloadItem.slot,
-      id = payloadItem.id,
-    }
-    items[payloadItem.id] = item
+    if type(payloadItem) == "table" and payloadItem.id ~= nil then
+      local item = {
+        name = payloadItem.name,
+        slot = payloadItem.slot,
+        id = payloadItem.id,
+      }
+      items[payloadItem.id] = item
+    end
   end
   return items
 end
 
 
+-- Returns: payload, err, characterKey — on success err is nil and characterKey is set.
 function IMP.import(jsonText)
   local payload, err = TuskUpLoot.Parser.Parse(jsonText)
   if not payload then
     return nil, err
   end
-  -- we have a parsed result, now we need to organize it to our desired models
-  local characterKey, characterData = extractCharacterDataFromExport(payload)
-  local items = extractItemsFromExport(payload)
-  local gearSetKey, gearSet = extractGearSetFromExport(payload)
 
-  -- insert organized data into database
+  local characterKey, characterData = extractCharacterDataFromExport(payload)
+  if not characterKey then
+    return nil, characterData or "invalid character data"
+  end
+
+  local items = extractItemsFromExport(payload)
+  if not items then
+    return nil, "invalid items in payload"
+  end
+
+  local gearSetKey, gearSet = extractGearSetFromExport(payload)
+  if not gearSetKey or type(gearSet) ~= "table" then
+    return nil, type(gearSet) == "string" and gearSet or "invalid gear set"
+  end
+
   TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
   TuskUpLoot.DB.insertItems(items)
   TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
-  return payload, nil
+
+  return payload, nil, characterKey
 end
