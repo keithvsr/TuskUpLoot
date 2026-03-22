@@ -113,7 +113,15 @@ function DB.characterGearSets(characterKey)
   if type(characterKey) ~= "string" then
     return nil
   end
-  return TuskUpLootDB.characters[characterKey].gearSets
+  local gearSets = TuskUpLootDB.characters[characterKey].gearSets
+  -- sort by phase, name alphabetically
+  table.sort(gearSets, function(a, b)
+    if a.phase ~= b.phase then
+      return a.phase < b.phase
+    end
+    return a.name < b.name
+  end)
+  return gearSets
 end
 
 -- function TuskUpLoot.DB.upsertImport(importObj, rawJsonText)
