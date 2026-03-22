@@ -1,7 +1,11 @@
 -- Handles UI creation + rendering for the addon.
 
-TuskUpLoot.UI = {}
+TuskUpLoot.UI = TuskUpLoot.UI or {}
 local UI = TuskUpLoot.UI
+
+UI.importPanelOpen = UI.importPanelOpen or false
+UI.updateAccumulator = UI.updateAccumulator or 0
+UI.updateIntervalSeconds = UI.updateIntervalSeconds or 0.5
 
 local function safeChatPrint(msg)
   if TuskUpLoot.chatPrint then
@@ -20,7 +24,7 @@ local function isInRequiredGuild()
   return true
 end
 
-local function formatItemLine(item)
+local function formatItemLine(item, acquired)
   if not item or not item.id then
     return "- (invalid item)"
   end
@@ -32,10 +36,11 @@ local function formatItemLine(item)
 
   local display = itemLink or (item.name and ("[" .. item.name .. "]")) or ("[Item " .. tostring(item.id) .. "]")
   local slotPrefix = item.slot and (item.slot .. ": ") or ""
-  return string.format("- %s%s", slotPrefix, display)
+  local check = acquired and "[x]" or "[ ]"
+  return string.format("- %s %s%s", check, slotPrefix, display)
 end
 
-function TuskUpLoot:ApplyImportPanelState()
+function UI:ApplyImportPanelState()
   if not self.frame then
     return
   end
@@ -89,7 +94,7 @@ function TuskUpLoot:ApplyImportPanelState()
   end
 end
 
-function TuskUpLoot.Frame:RenderSelectedCharacter()
+function UI:RenderSelectedCharacter()
   if not self.text then
     return
   end
@@ -100,47 +105,86 @@ function TuskUpLoot.Frame:RenderSelectedCharacter()
     return
   end
 
-  local imports = _G.TuskUpLootDB and _G.TuskUpLootDB.imports or {}
-  local selected = self.selectedCharacterKey and imports[self.selectedCharacterKey]
+  DB.init()
 
-  if selected then
+  local db = _G.TuskUpLootDB
+  if not db or not db.characters then
+    self.text:SetText("No saved data yet.")
+    return
+  end
+
+  local selectedKey = self.selectedCharacterKey
+  local character = selectedKey and db.characters[selectedKey]
+
+  if character then
     local lines = {
-      "Imported wishlist:",
-      string.format("Character: %s", selected.characterName or self.selectedCharacterKey),
-      "",
+      string.format("Character: %s", character.name or selectedKey),
     }
+    if character.level then
+      lines[#lines + 1] = string.format("Level: %s", tostring(character.level))
+    end
+    if character.race then
+      lines[#lines + 1] = string.format("Race: %s", character.race)
+    end
+    if character.class then
+      lines[#lines + 1] = string.format("Class: %s", character.class)
+    end
+    lines[#lines + 1] = ""
 
-    if selected.items and #selected.items > 0 then
-      for i = 1, #selected.items do
-        lines[#lines + 1] = formatItemLine(selected.items[i])
-        if i >= 120 then
-          lines[#lines + 1] = string.format("... (%d more)", #selected.items - i)
-          break
+    local orderedSets = DB.characterGearSets(selectedKey)
+    if not orderedSets or #orderedSets == 0 then
+      lines[#lines + 1] = "(No gear sets stored for this character.)"
+      self.text:SetText(table.concat(lines, "\n"))
+      return
+    end
+
+    local lineBudget = 200
+    for _, row in ipairs(orderedSets) do
+      local gs = row.gearSet
+      if gs then
+        lines[#lines + 1] = string.format("--- %s (phase %s) ---", gs.name or row.key, tostring(gs.phase or "?"))
+        local itemMap = gs.items or {}
+        local itemIds = {}
+        for itemId in pairs(itemMap) do
+          itemIds[#itemIds + 1] = itemId
         end
+        table.sort(itemIds, function(a, b)
+          return (tonumber(a) or 0) < (tonumber(b) or 0)
+        end)
+        for _, itemId in ipairs(itemIds) do
+          if #lines >= lineBudget then
+            lines[#lines + 1] = "... (truncated)"
+            break
+          end
+          local meta = db.items and db.items[itemId]
+          local acquired = itemMap[itemId]
+          lines[#lines + 1] = formatItemLine(meta or { id = itemId, name = nil, slot = nil }, acquired)
+        end
+        lines[#lines + 1] = ""
       end
-    else
-      lines[#lines + 1] = "(No items found in import. Ensure you pasted the sixtyupgrades JSON export.)"
+      if #lines >= lineBudget then
+        break
+      end
     end
 
     self.text:SetText(table.concat(lines, "\n"))
     return
   end
 
-  -- Default view (no character selected / no imports yet)
-  local anyImports = false
-  for _ in pairs(imports) do
-    anyImports = true
+  local anyChars = false
+  for _ in pairs(db.characters) do
+    anyChars = true
     break
   end
 
-  if not anyImports then
+  if not anyChars then
     self.text:SetText('No character lists imported.\nClick "Import JSON" to paste a sixtyupgrades export.')
   else
-    self.text:SetText("Select a character from the imports list to view their wishlist.")
+    self.text:SetText("Select a character from the list to view their gear sets.")
   end
 end
 
-function TuskUpLoot.Frame:RebuildCharacterList()
+function UI:RebuildCharacterList()
   if not self.charListContainer then
     return
   end
@@ -150,7 +194,7 @@ function TuskUpLoot.Frame:RebuildCharacterList()
     return
   end
 
-  DB.ensure()
+  DB.init()
 
   local container = self.charListContainer
   if container.buttons then
@@ -160,14 +204,14 @@ function TuskUpLoot.Frame:RebuildCharacterList()
   end
   container.buttons = container.buttons or {}
 
-  local keys = DB.sortedImportKeys()
+  local rows = DB.characterNamesAndClasses() or {}
   local y = -6
   local btnHeight = 18
 
-  for i = 1, #keys do
-    local key = keys[i]
-    local imp = _G.TuskUpLootDB.imports[key]
-    local label = (imp and imp.characterName) or key
+  for i = 1, #rows do
+    local row = rows[i]
+    local key = row.key
+    local label = row.name or key
 
     local btn = container.buttons[i]
     if not btn then
@@ -178,15 +222,16 @@ function TuskUpLoot.Frame:RebuildCharacterList()
       btn.text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
       btn.text:SetPoint("LEFT", 4, 0)
       btn.text:SetJustifyH("LEFT")
-      btn:SetScript("OnClick", function()
-        TuskUpLoot:SetSelectedCharacter(key)
-      end)
       container.buttons[i] = btn
     else
       btn:ClearAllPoints()
       btn:SetPoint("TOPLEFT", container, "TOPLEFT", 0, y)
       btn:SetPoint("RIGHT", container, "RIGHT", 0, 0)
     end
+
+    btn:SetScript("OnClick", function()
+      UI:SetSelectedCharacter(key)
+    end)
 
     local isSelected = (self.selectedCharacterKey == key)
     btn.text:SetText((isSelected and "|cffffff00" or "") .. label .. (isSelected and "|r" or ""))
@@ -195,21 +240,21 @@ function TuskUpLoot.Frame:RebuildCharacterList()
     y = y - btnHeight
   end
 
-  container:SetHeight(math.max(1, (#keys * btnHeight) + 12))
+  container:SetHeight(math.max(1, (#rows * btnHeight) + 12))
 end
 
-function TuskUpLoot.Frame:SetSelectedCharacter(key)
+function UI:SetSelectedCharacter(key)
   self.selectedCharacterKey = key
   self:RenderSelectedCharacter()
   self:RebuildCharacterList()
 end
 
-function TuskUpLoot.Frame:Refresh()
+function UI:Refresh()
   self:ApplyImportPanelState()
   self:RenderSelectedCharacter()
 end
 
-function TuskUpLoot.Frame:EnsureFrame()
+function UI:EnsureFrame()
   if self.frame then
     return
   end
@@ -221,7 +266,6 @@ function TuskUpLoot.Frame:EnsureFrame()
   f:EnableMouse(true)
   f:SetClampedToScreen(true)
 
-  -- Drag only from the title bar region so UI elements remain clickable.
   local dragRegion = CreateFrame("Frame", nil, f)
   dragRegion:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -10)
   dragRegion:SetPoint("TOPRIGHT", f, "TOPRIGHT", -44, -10)
@@ -237,17 +281,17 @@ function TuskUpLoot.Frame:EnsureFrame()
   end)
 
   f:SetScript("OnShow", function()
-    TuskUpLoot.Frame:Refresh()
-    TuskUpLoot.Frame.updateAccumulator = 0
+    UI:Refresh()
+    UI.updateAccumulator = 0
   end)
   f:SetScript("OnHide", function()
-    TuskUpLoot.Frame.updateAccumulator = 0
+    UI.updateAccumulator = 0
   end)
   f:SetScript("OnUpdate", function(_, elapsed)
-    TuskUpLoot.Frame.updateAccumulator = (TuskUpLoot.Frame.updateAccumulator or 0) + elapsed
-    if TuskUpLoot.Frame.updateAccumulator >= (TuskUpLoot.Frame.updateIntervalSeconds or 0.5) then
-      TuskUpLoot.Frame.updateAccumulator = 0
-      TuskUpLoot.Frame:Refresh()
+    UI.updateAccumulator = (UI.updateAccumulator or 0) + elapsed
+    if UI.updateAccumulator >= (UI.updateIntervalSeconds or 0.5) then
+      UI.updateAccumulator = 0
+      UI:Refresh()
     end
   end)
 
@@ -256,7 +300,6 @@ function TuskUpLoot.Frame:EnsureFrame()
   title:SetPoint("TOP", f, "TOP", 0, -8)
   title:SetText(TuskUpLoot.addonName or "TuskUpLoot")
 
-  -- Left panel: imported characters list
   local listBg = CreateFrame("Frame", nil, f)
   listBg:SetPoint("TOPLEFT", f, "TOPLEFT", 18, -42)
   listBg:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 18)
@@ -264,7 +307,7 @@ function TuskUpLoot.Frame:EnsureFrame()
 
   local listTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   listTitle:SetPoint("TOPLEFT", listBg, "TOPLEFT", 2, 14)
-  listTitle:SetText("Imports")
+  listTitle:SetText("Characters")
 
   local listScroll = CreateFrame("ScrollFrame", nil, listBg, "UIPanelScrollFrameTemplate")
   listScroll:SetPoint("TOPLEFT", listBg, "TOPLEFT", 0, -4)
@@ -278,14 +321,13 @@ function TuskUpLoot.Frame:EnsureFrame()
   self.charListContainer = listContainer
   self.charListScroll = listScroll
 
-  -- Right panel
   local toggleImportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
   toggleImportBtn:SetSize(160, 22)
   toggleImportBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 200, -46)
   toggleImportBtn:SetText("Import JSON")
   toggleImportBtn:SetScript("OnClick", function()
-    TuskUpLoot.Frame.importPanelOpen = not TuskUpLoot.Frame.importPanelOpen
-    TuskUpLoot.Frame:ApplyImportPanelState()
+    UI.importPanelOpen = not UI.importPanelOpen
+    UI:ApplyImportPanelState()
   end)
   self.toggleImportBtn = toggleImportBtn
 
@@ -323,20 +365,20 @@ function TuskUpLoot.Frame:EnsureFrame()
       return
     end
 
-    local parsed, err = TuskUpLoot.Importer and TuskUpLoot.Importer.import(txt)
-    if not parsed then
+    local payload, err, characterKey
+    if TuskUpLoot.Importer then
+      payload, err, characterKey = TuskUpLoot.Importer.import(txt)
+    end
+    if not payload then
       safeChatPrint("Import failed: " .. tostring(err or "unknown"))
       return
     end
 
-    local key, _ = TuskUpLoot.DB and TuskUpLoot.DB.upsertImport(parsed, txt)
-    if not key then
-      safeChatPrint("Import failed: could not save data.")
-      return
+    local name = payload.character and payload.character.name or characterKey
+    safeChatPrint(string.format("Imported %s.", tostring(name or "character")))
+    if characterKey then
+      UI:SetSelectedCharacter(characterKey)
     end
-
-    safeChatPrint(string.format("Imported %s.", parsed.characterName or key))
-    TuskUpLoot.Frame:SetSelectedCharacter(key)
     input:SetText("")
   end)
   self.importBtn = importBtn
@@ -359,13 +401,14 @@ function TuskUpLoot.Frame:EnsureFrame()
   text:SetJustifyV("TOP")
   self.text = text
 
-  local close = _G["TuskUpLootMainFrameClose"]
+  local close = _G["TuskUpLootMainFrameCloseButton"] or _G["TuskUpLootMainFrameClose"]
   if close then
     close:ClearAllPoints()
-    close:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
+    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -5)
   end
 
   self.frame = f
+  TuskUpLoot.frame = f
 
   self:ApplyImportPanelState()
   self:RebuildCharacterList()
@@ -373,7 +416,7 @@ function TuskUpLoot.Frame:EnsureFrame()
   f:Hide()
 end
 
-function TuskUpLoot.Frame:Toggle()
+function UI:Toggle()
   if not isInRequiredGuild() then
     safeChatPrint(string.format("Disabled: only available to members of guild '%s'.",
       TuskUpLoot.requiredGuildName or "Tusk Up"))

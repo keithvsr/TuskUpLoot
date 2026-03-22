@@ -2,15 +2,7 @@ local ADDON_NAME = ...
 
 local addon = TuskUpLoot
 
--- Public addon state (shared with modules loaded via .toc)
 addon.addonName = ADDON_NAME
-addon.frame = nil
-addon.text = nil
-addon.updateAccumulator = 0
-addon.updateIntervalSeconds = 0.5
-addon.isInitialized = false
-addon.selectedCharacterKey = nil
-addon.importPanelOpen = false
 
 local REQUIRED_GUILD_NAME = "Tusk Up"
 addon.requiredGuildName = REQUIRED_GUILD_NAME
@@ -33,8 +25,8 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
 eventFrame:SetScript("OnEvent", function()
-  if addon.DB and addon.DB.ensure then
-    addon.DB.ensure()
+  if addon.DB and addon.DB.init then
+    addon.DB.init()
   end
 
   if not addon.isInitialized then
@@ -44,12 +36,13 @@ eventFrame:SetScript("OnEvent", function()
     SLASH_TUSKUPLOOT1 = "/tul"
     SLASH_TUSKUPLOOT2 = "/tuskup"
     SlashCmdList.TUSKUPLOOT = function()
-      addon.Frame:Toggle()
+      if addon.UI and addon.UI.Toggle then
+        addon.UI:Toggle()
+      end
     end
   end
 
-  -- If guild state changes while the window is open, hide it.
-  if TuskUpLoot.frame and TuskUpLoot.frame:IsShown() and not TuskUpLoot.isInRequiredGuild() then
-    TuskUpLoot.frame:Hide()
+  if addon.UI and addon.UI.frame and addon.UI.frame:IsShown() and not addon.isInRequiredGuild() then
+    addon.UI.frame:Hide()
   end
 end)
