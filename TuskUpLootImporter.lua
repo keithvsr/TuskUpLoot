@@ -60,7 +60,7 @@ local function extractItemsFromExport(payload)
   end
 
   local items = {}
-  for _, payloadItem in pairs(payload.items) do
+  for _, payloadItem in ipairs(payload.items) do
     local item = {
       name = payloadItem.name,
       slot = payloadItem.slot,
@@ -73,18 +73,18 @@ end
 
 
 function IMP.import(jsonText)
-  local ok, result = pcall(TuskUpLoot.Parser.Parse, jsonText)
-  if not ok then
-    return nil, result
+  local payload, err = TuskUpLoot.Parser.Parse(jsonText)
+  if not payload then
+    return nil, err
   end
   -- we have a parsed result, now we need to organize it to our desired models
-  local characterKey, characterData = extractCharacterDataFromExport(result)
-  local items = extractItemsFromExport(result)
-  local gearSetKey, gearSet = extractGearSetFromExport(result)
+  local characterKey, characterData = extractCharacterDataFromExport(payload)
+  local items = extractItemsFromExport(payload)
+  local gearSetKey, gearSet = extractGearSetFromExport(payload)
 
   -- insert organized data into database
   TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
   TuskUpLoot.DB.insertItems(items)
   TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
-  return result, nil
+  return payload, nil
 end

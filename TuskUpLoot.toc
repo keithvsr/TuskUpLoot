@@ -9,5 +9,5 @@ TuskUpLootCore.lua
 TuskUpLootDB.lua
 TuskUpLootParser.lua
 TuskUpLootImporter.lua
-TuskUpLootFrame.lua
+TuskUpLootUI.lua
 TuskUpLoot.lua

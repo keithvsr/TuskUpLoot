@@ -75,9 +75,12 @@ function DB.upsertGearSet(characterKey, gearSetKey, gearSet)
       or type(gearSet) ~= "table" then
     return nil
   end
-  local characterGearSets = TuskUpLootDB.characters[characterKey].gearSets
-  characterGearSets[gearSetKey] = gearSet
-  return characterKey, characterGearSets[gearSet.name]
+  local character = TuskUpLootDB.characters[characterKey]
+  if not character.gearSets then
+    character.gearSets = {}
+  end
+  character.gearSets[gearSetKey] = gearSet
+  return characterKey, character.gearSets[gearSetKey]
 end
 
 function DB.sortedItemIDs()
@@ -95,8 +98,9 @@ end
 function DB.characterNamesAndClasses()
   ensureSavedVar()
   local namesAndClasses = {}
-  for _, character in pairs(TuskUpLootDB.characters) do
+  for characterKey, character in pairs(TuskUpLootDB.characters) do
     namesAndClasses[#namesAndClasses + 1] = {
+      key = characterKey,
       name = character.name,
       class = character.class,
     }
@@ -113,15 +117,41 @@ function DB.characterGearSets(characterKey)
   if type(characterKey) ~= "string" then
     return nil
   end
-  local gearSets = TuskUpLootDB.characters[characterKey].gearSets
+  local character = TuskUpLootDB.characters[characterKey]
+  if not character or not character.gearSets then
+    return {}
+  end
+
+  local gearSets = character.gearSets
+
+  local keys = {}
+  for k in pairs(gearSets) do
+    keys[#keys + 1] = k
+  end
+
   -- sort by phase, name alphabetically
-  table.sort(gearSets, function(a, b)
+  table.sort(keys, function(ka, kb)
+    local a = gearSets[ka]
+    local b = gearSets[kb]
+    if not a or not b then
+      return ka < kb
+    end
     if a.phase ~= b.phase then
       return a.phase < b.phase
     end
-    return a.name < b.name
+    return (a.name or ka) < (b.name or kb)
   end)
-  return gearSets
+
+  local ordered = {}
+  for i = 1, #keys do
+    local k = keys[i]
+    ordered[i] = {
+      key = k,
+      gearSet = gearSets[k],
+    }
+  end
+
+  return ordered
 end
 
 -- function TuskUpLoot.DB.upsertImport(importObj, rawJsonText)
