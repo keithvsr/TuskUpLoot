@@ -70,11 +70,13 @@ end
 
 function DB.upsertGearSet(characterKey, gearSetKey, gearSet)
   ensureSavedVar()
-  if type(characterKey) ~= "string" or type(gearSet) ~= "table" then
+  if type(characterKey) ~= "string"
+      or type(gearSetKey) ~= "string"
+      or type(gearSet) ~= "table" then
     return nil
   end
   local characterGearSets = TuskUpLootDB.characters[characterKey].gearSets
-  characterGearSets[gearSet.name] = gearSet
+  characterGearSets[gearSetKey] = gearSet
   return characterKey, characterGearSets[gearSet.name]
 end
 

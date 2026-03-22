@@ -30,19 +30,27 @@ local function extractCharacterDataFromExport(payload)
   return characterKey, characterData
 end
 
-local function extractGearSetFromExport(setName, payloadItems)
-  if type(setName) ~= "string" or type(payloadItems) ~= "table" then
-    return nil, "invalid setName or items"
+local function extractGearSetFromExport(payload)
+  if type(payload) ~= "table"
+      or type(payload.name) ~= "string"
+      or type(payload.phase) ~= "number"
+      or type(payload.items) ~= "table"
+  then
+    return nil, "invalid or incomplete payload"
   end
 
-  local gearSetKey = normalizeStringKey(setName)
-  local gearSetItems = {}
-  for _, item in pairs(payloadItems) do
+  local gearSetKey = normalizeStringKey(payload.name)
+  local gearSet = {
+    name = payload.name,
+    phase = payload.phase,
+    items = {},
+  }
+  for _, item in pairs(payload.items) do
     local acquired = item.acquired ~= nil and item.acquired or false
-    gearSetItems[item.id] = acquired
+    gearSet.items[item.id] = acquired
   end
 
-  return gearSetKey, gearSetItems
+  return gearSetKey, gearSet
 end
 
 
@@ -72,11 +80,11 @@ function IMP.import(jsonText)
   -- we have a parsed result, now we need to organize it to our desired models
   local characterKey, characterData = extractCharacterDataFromExport(result)
   local items = extractItemsFromExport(result)
-  local gearSetKey, gearSetItems = extractGearSetFromExport(result)
+  local gearSetKey, gearSet = extractGearSetFromExport(result)
 
   -- insert organized data into database
   TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
   TuskUpLoot.DB.insertItems(items)
-  TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSetItems)
+  TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
   return result, nil
 end
