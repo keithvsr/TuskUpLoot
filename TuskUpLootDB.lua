@@ -30,8 +30,15 @@ local function upsertItem(itemKey, item)
   if TuskUpLootDB.items[itemKey] == nil then
     TuskUpLootDB.items[itemKey] = item
   else
-    for characterKey, gearSetKey in pairs(item.characters) do
-      TuskUpLootDB.items[itemKey].characters[characterKey] = gearSetKey
+    for characterKey, gearSets in pairs(item.characters) do
+      local itemCharTable = TuskUpLootDB.items[itemKey].characters[characterKey]
+      if not itemCharTable then
+        itemCharTable = gearSets or {}
+      else
+        for _, gearSetKey in ipairs(gearSets) do
+          itemCharTable[#itemCharTable + 1] = gearSetKey
+        end
+      end
     end
   end
 end
@@ -100,6 +107,27 @@ function DB.sortedItemIDs()
     return a < b
   end)
   return ids
+end
+
+function DB.getItems()
+  ensureSavedVar()
+  return TuskUpLootDB.items or {}
+end
+
+function DB.getItem(itemId)
+  ensureSavedVar()
+  if TuskUpLootDB.items and TuskUpLootDB.items[itemId] then
+    return TuskUpLootDB.items[itemId]
+  end
+  return nil
+end
+
+function DB.getItemAssociatedCharacters(itemId)
+  ensureSavedVar()
+  if TuskUpLootDB.items and TuskUpLootDB.items[itemId] then
+    return TuskUpLootDB.items[itemId].characters or {}
+  end
+  return {}
 end
 
 function DB.characterNamesAndClasses()

@@ -69,7 +69,7 @@ local function extractItemsFromExport(payload, characterKey, gearSetKey)
         slot = payloadItem.slot,
         id = payloadItem.id,
         characters = {
-          [characterKey] = gearSetKey
+          [characterKey] = { gearSetKey }
         }
       }
       items[payloadItem.id] = item
