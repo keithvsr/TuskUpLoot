@@ -56,7 +56,7 @@ local function extractGearSetFromExport(payload)
 end
 
 
-local function extractItemsFromExport(payload)
+local function extractItemsFromExport(payload, characterKey, gearSetKey)
   if type(payload) ~= "table" or type(payload.items) ~= "table" then
     return nil, "invalid payload: items"
   end
@@ -68,6 +68,9 @@ local function extractItemsFromExport(payload)
         name = payloadItem.name,
         slot = payloadItem.slot,
         id = payloadItem.id,
+        characters = {
+          [characterKey] = gearSetKey
+        }
       }
       items[payloadItem.id] = item
     end
@@ -88,19 +91,19 @@ function IMP.import(jsonText)
     return nil, characterData or "invalid character data"
   end
 
-  local items = extractItemsFromExport(payload)
-  if not items then
-    return nil, "invalid items in payload"
-  end
-
   local gearSetKey, gearSet = extractGearSetFromExport(payload)
   if not gearSetKey or type(gearSet) ~= "table" then
     return nil, type(gearSet) == "string" and gearSet or "invalid gear set"
   end
 
+  local items = extractItemsFromExport(payload, characterKey, gearSetKey)
+  if not items then
+    return nil, "invalid items in payload"
+  end
+
   TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
-  TuskUpLoot.DB.insertItems(items)
   TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
+  TuskUpLoot.DB.upsertItems(items, characterKey, gearSetKey)
 
   return payload, nil, characterKey
 end

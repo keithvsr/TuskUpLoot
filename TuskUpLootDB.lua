@@ -24,11 +24,15 @@ local function ensureSavedVar()
   end
 end
 
-local function insertItem(itemKey, item)
+local function upsertItem(itemKey, item)
   ensureSavedVar()
   assert(itemKey, "item ID key is required")
   if TuskUpLootDB.items[itemKey] == nil then
     TuskUpLootDB.items[itemKey] = item
+  else
+    for characterKey, gearSetKey in pairs(item.characters) do
+      TuskUpLootDB.items[itemKey].characters[characterKey] = gearSetKey
+    end
   end
 end
 
@@ -58,11 +62,11 @@ function DB.upsertCharacter(characterKey, character)
   return characterKey, chars[characterKey]
 end
 
-function DB.insertItems(items)
+function DB.upsertItems(items)
   if type(items) ~= "table" then return nil end
 
   for itemKey, item in pairs(items) do
-    insertItem(itemKey, item)
+    upsertItem(itemKey, item)
   end
 
   return items
