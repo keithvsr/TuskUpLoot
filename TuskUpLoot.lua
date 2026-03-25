@@ -13,8 +13,12 @@ function addon.chatPrint(msg)
   end
 end
 
+local function isPlayerInGuild()
+  return IsInGuild() and GetGuildInfo("player") ~= nil
+end
+
 function addon.isInRequiredGuild()
-  if not GetGuildInfo then
+  if not isPlayerInGuild() then
     return true
   end
   local guildName = GetGuildInfo("player")
@@ -36,27 +40,32 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     -- only need to init the DB once on startup
     if addon.DB and addon.DB.init then
       addon.DB.init()
+      addon.dbInitialized = true
     end
 
     -- request to load item data for each item in DB
     local itemIds = addon.DB.sortedItemIDs()
     addon.totalItems = itemIds and #itemIds or 0
-    addon.pendingItems = {}
-    -- track the items that are pending
-    for _, itemId in ipairs(itemIds) do
-      addon.pendingItems[itemId] = true
-    end
-    -- request the item data
-    addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
-    for _, itemId in ipairs(itemIds) do
-      C_Item.RequestLoadItemDataByID(itemId)
+    if addon.totalItems > 0 then
+      addon.pendingItems = {}
+      -- track the items that are pending
+      for _, itemId in ipairs(itemIds) do
+        addon.pendingItems[itemId] = true
+      end
+      -- request the item data
+      addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
+      for _, itemId in ipairs(itemIds) do
+        C_Item.RequestLoadItemDataByID(itemId)
+      end
+    else
+      addon.chatPrint("AddOn Initialized.")
     end
 
     SLASH_TUSKUPLOOT1 = "/tul"
     SLASH_TUSKUPLOOT2 = "/tuskup"
     SlashCmdList.TUSKUPLOOT = function()
-      if addon.UI and addon.UI.Toggle then
-        addon.UI:Toggle()
+      if addon.UI and addon.UI.toggle then
+        addon.UI.toggle()
       end
     end
 
