@@ -24,19 +24,28 @@ local function ensureSavedVar()
   end
 end
 
-local function upsertItem(itemKey, item)
+local function upsertItem(itemId, item)
   ensureSavedVar()
-  assert(itemKey, "item ID key is required")
-  if TuskUpLootDB.items[itemKey] == nil then
-    TuskUpLootDB.items[itemKey] = item
+  assert(itemId, "item ID is required to insert/update item")
+  if TuskUpLootDB.items[itemId] == nil then
+    -- request data if item is new to DB
+    C_Item.RequestLoadItemDataByID(itemId)
+    TuskUpLootDB.items[itemId] = item
   else
-    for characterKey, gearSets in pairs(item.characters) do
-      local itemCharTable = TuskUpLootDB.items[itemKey].characters[characterKey]
+    local stored = TuskUpLootDB.items[itemId]
+    if not stored.characters then
+      stored.characters = {}
+    end
+    for characterKey, charData in pairs(item.characters) do
+      local itemCharTable = stored.characters[characterKey]
       if not itemCharTable then
-        itemCharTable = gearSets or {}
+        stored.characters[characterKey] = charData or {}
       else
-        for _, gearSetKey in ipairs(gearSets) do
-          itemCharTable[#itemCharTable + 1] = gearSetKey
+        if charData.acquired and not itemCharTable.acquired then
+          itemCharTable.acquired = true
+        end
+        for _, gearSetKey in ipairs(charData.gearSets) do
+          itemCharTable.gearSets[#itemCharTable.gearSets + 1] = gearSetKey
         end
       end
     end
@@ -72,8 +81,8 @@ end
 function DB.upsertItems(items)
   if type(items) ~= "table" then return nil end
 
-  for itemKey, item in pairs(items) do
-    upsertItem(itemKey, item)
+  for itemId, item in pairs(items) do
+    upsertItem(itemId, item)
   end
 
   return items
@@ -128,6 +137,73 @@ function DB.getItemAssociatedCharacters(itemId)
     return TuskUpLootDB.items[itemId].characters or {}
   end
   return {}
+end
+
+function DB.markItemAcquired(itemId, characterKey)
+  ensureSavedVar()
+  if (TuskUpLootDB.items
+        and TuskUpLootDB.items[itemId]
+        and TuskUpLootDB.items[itemId].characters
+        and TuskUpLootDB.items[itemId].characters[characterKey]) then
+    TuskUpLootDB.items[itemId].characters[characterKey].acquired = true
+  end
+end
+
+function DB.getItemRollup(itemId)
+  local item = DB.getItem(itemId)
+  if not item then
+    return nil
+  end
+
+  local chars = item.characters
+  if type(chars) ~= "table" then
+    return {}
+  end
+
+  local rollup = {}
+  for characterKey, metadata in pairs(chars) do
+    if type(metadata) == "table" then
+      local character = TuskUpLootDB.characters[characterKey]
+      local displayName = (character and character.name) or characterKey
+      local gearRows = {}
+      local hasAcquired = metadata.acquired or false
+
+      for _, gsKey in ipairs(metadata.gearSets) do
+        local gsName = gsKey
+        local phase = nil
+        if character and character.gearSets and character.gearSets[gsKey] then
+          local gs = character.gearSets[gsKey]
+          gsName = gs.name or gsKey
+          phase = gs.phase
+        end
+        gearRows[#gearRows + 1] = {
+          key = gsKey,
+          name = gsName,
+          phase = phase,
+        }
+      end
+
+      table.sort(gearRows, function(a, b)
+        if a.phase ~= b.phase then
+          return (a.phase or 0) < (b.phase or 0)
+        end
+        return (a.name or "") < (b.name or "")
+      end)
+
+      rollup[#rollup + 1] = {
+        characterKey = characterKey,
+        name = displayName,
+        gearSets = gearRows,
+        hasAcquired = hasAcquired,
+      }
+    end
+  end
+
+  table.sort(rollup, function(a, b)
+    return (a.name or "") < (b.name or "")
+  end)
+
+  return rollup
 end
 
 function DB.characterNamesAndClasses()

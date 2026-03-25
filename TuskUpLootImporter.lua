@@ -45,18 +45,22 @@ local function extractGearSetFromExport(payload)
     phase = payload.phase,
     items = {},
   }
+  local acquiredItems = {}
   for _, item in pairs(payload.items) do
     if type(item) == "table" and item.id ~= nil then
+      table.insert(gearSet.items, item.id)
       local acquired = item.acquired ~= nil and item.acquired or false
-      gearSet.items[item.id] = acquired
+      if acquired then
+        acquiredItems[item.id] = true
+      end
     end
   end
 
-  return gearSetKey, gearSet
+  return gearSetKey, gearSet, acquiredItems
 end
 
 
-local function extractItemsFromExport(payload, characterKey, gearSetKey)
+local function extractItemsFromExport(payload, characterKey, gearSetKey, acquiredItems)
   if type(payload) ~= "table" or type(payload.items) ~= "table" then
     return nil, "invalid payload: items"
   end
@@ -64,12 +68,16 @@ local function extractItemsFromExport(payload, characterKey, gearSetKey)
   local items = {}
   for _, payloadItem in ipairs(payload.items) do
     if type(payloadItem) == "table" and payloadItem.id ~= nil then
+      local acq = acquiredItems[payloadItem.id] ~= nil and acquiredItems[payloadItem.id] or false
       local item = {
         name = payloadItem.name,
         slot = payloadItem.slot,
         id = payloadItem.id,
         characters = {
-          [characterKey] = { gearSetKey }
+          [characterKey] = {
+            acquired = acq,
+            gearSets = { gearSetKey }
+          }
         }
       }
       items[payloadItem.id] = item
@@ -91,12 +99,12 @@ function IMP.import(jsonText)
     return nil, characterData or "invalid character data"
   end
 
-  local gearSetKey, gearSet = extractGearSetFromExport(payload)
+  local gearSetKey, gearSet, acquiredItems = extractGearSetFromExport(payload)
   if not gearSetKey or type(gearSet) ~= "table" then
     return nil, type(gearSet) == "string" and gearSet or "invalid gear set"
   end
 
-  local items = extractItemsFromExport(payload, characterKey, gearSetKey)
+  local items = extractItemsFromExport(payload, characterKey, gearSetKey, acquiredItems)
   if not items then
     return nil, "invalid items in payload"
   end
