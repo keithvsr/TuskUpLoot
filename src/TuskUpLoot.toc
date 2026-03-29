@@ -1,0 +1,13 @@
+## Interface: 20505
+## Title: TuskUpLoot
+## Notes: Minimal guild loot needs UI (starter)
+## Author: Kaaser - Nightslayer Horde
+## Version: 0.1.0
+## SavedVariables: TuskUpLootDB
+
+Core.lua
+DB/TuskUpLootDB.lua
+Import/TuskUpLootParser.lua
+Import/TuskUpLootImporter.lua
+UI/TuskUpLootUI.lua
+TuskUpLoot.lua

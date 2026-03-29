@@ -2,13 +2,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC_DIR="${ROOT_DIR}/src"
 OUT_ROOT="${ROOT_DIR}/dist"
 ADDON_NAME="TuskUpLoot"
 OUT_DIR="${OUT_ROOT}/${ADDON_NAME}"
 
 required_files=(
-  "${ROOT_DIR}/TuskUpLoot.toc"
-  "${ROOT_DIR}/TuskUpLoot.lua"
+  "${SRC_DIR}/TuskUpLoot.toc"
+  "${SRC_DIR}/TuskUpLoot.lua"
 )
 
 rm -rf "${OUT_DIR}"
@@ -21,18 +22,13 @@ for f in "${required_files[@]}"; do
   fi
 done
 
-cp -f "${ROOT_DIR}/TuskUpLoot.toc" "${OUT_DIR}/"
+cp -f "${SRC_DIR}/TuskUpLoot.toc" "${OUT_DIR}/"
 
-lua_files=(
-  "${ROOT_DIR}"/TuskUpLoot*.lua
-)
-shopt -s nullglob
-for f in "${lua_files[@]}"; do
-  if [[ -f "${f}" ]]; then
-    cp -f "${f}" "${OUT_DIR}/"
-  fi
-done
-shopt -u nullglob
+while IFS= read -r f; do
+  rel="${f#${SRC_DIR}/}"
+  mkdir -p "${OUT_DIR}/$(dirname "${rel}")"
+  cp -f "${f}" "${OUT_DIR}/${rel}"
+done < <(find "${SRC_DIR}" -type f -name '*.lua' | sort)
 
 shopt -s nullglob
 extra_files=(
@@ -56,4 +52,3 @@ rm -f "${OUT_ROOT}/${ADDON_NAME}.zip"
 
 echo "Built folder: ${OUT_DIR}"
 echo "Built archive: ${OUT_ROOT}/${ADDON_NAME}.zip"
-
