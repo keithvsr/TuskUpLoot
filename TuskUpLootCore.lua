@@ -1,1 +1,0 @@
-TuskUpLoot = TuskUpLoot or {}
