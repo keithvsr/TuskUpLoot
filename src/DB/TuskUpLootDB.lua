@@ -44,7 +44,10 @@ local function upsertItem(itemId, item)
         if charData.acquired and not itemCharTable.acquired then
           itemCharTable.acquired = true
         end
-        for _, gearSetKey in ipairs(charData.gearSets) do
+        if not itemCharTable.gearSets then
+          itemCharTable.gearSets = {}
+        end
+        for _, gearSetKey in ipairs(charData.gearSets or {}) do
           itemCharTable.gearSets[#itemCharTable.gearSets + 1] = gearSetKey
         end
       end

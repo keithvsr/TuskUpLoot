@@ -1,13 +1,30 @@
 ## Interface: 20505
 ## Title: TuskUpLoot
-## Notes: Minimal guild loot needs UI (starter)
-## Author: Kaaser - Nightslayer Horde
-## Version: 0.1.0
+## Category: Loot
+## Notes: TBC raid loot catalog and guild BIS import
+## Author: Kaaser-Nightslayer <Tusk Up>
+## Version: 0.3.0
 ## SavedVariables: TuskUpLootDB
 
 Core.lua
+Data/Items.lua
+Data/NPCs.lua
+Data/Objects.lua
+Data/Zones.lua
+Data/Instances.lua
+Data/Encounters.lua
+Data/Loot.lua
 DB/TuskUpLootDB.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
 UI/TuskUpLootUI.lua
+UI/Constants.lua
+UI/Util.lua
+UI/ItemDetail.lua
+UI/CharactersTab.lua
+UI/ItemsTab.lua
+UI/RaidsTab.lua
+UI/Tabs.lua
+UI/ImportFrame.lua
+UI/MainFrame.lua
 TuskUpLoot.lua
