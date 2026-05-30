@@ -1,0 +1,341 @@
+TuskUpLoot.Data = TuskUpLoot.Data or {}
+local Data = TuskUpLoot.Data
+
+Data.Encounters = Data.Encounters or {}
+
+Data.Encounters = {
+    [601] = {
+        id = 601,
+        instance_id = 564,
+        loot = { { npc_id = 22887, type = "npc" } },
+        name = "High Warlord Naj'entus",
+    },
+    [602] = {
+        id = 602,
+        instance_id = 564,
+        loot = { { npc_id = 22898, type = "npc" } },
+        name = "Supremus",
+    },
+    [603] = {
+        id = 603,
+        instance_id = 564,
+        loot = { { npc_id = 22841, type = "npc" } },
+        name = "Shade of Akama",
+    },
+    [604] = {
+        id = 604,
+        instance_id = 564,
+        loot = { { npc_id = 22871, type = "npc" } },
+        name = "Teron Gorefiend",
+    },
+    [605] = {
+        id = 605,
+        instance_id = 564,
+        loot = { { npc_id = 22948, type = "npc" } },
+        name = "Gurtogg Bloodboil",
+    },
+    [606] = {
+        id = 606,
+        instance_id = 564,
+        loot = { { npc_id = 23420, type = "npc" } },
+        name = "Reliquary of Souls",
+    },
+    [607] = {
+        id = 607,
+        instance_id = 564,
+        loot = { { npc_id = 22947, type = "npc" } },
+        name = "Mother Shahraz",
+    },
+    [608] = {
+        id = 608,
+        instance_id = 564,
+        loot = {
+            {
+                npc_id = 22949,
+                type = "npc",
+            },
+            {
+                npc_id = 22950,
+                type = "npc",
+            },
+            {
+                npc_id = 22951,
+                type = "npc",
+            },
+            {
+                npc_id = 22952,
+                type = "npc",
+            },
+        },
+        name = "The Illidari Council",
+    },
+    [609] = {
+        id = 609,
+        instance_id = 564,
+        loot = { { npc_id = 22917, type = "npc" } },
+        name = "Illidan Stormrage",
+    },
+    [618] = {
+        id = 618,
+        instance_id = 534,
+        loot = { { npc_id = 17767, type = "npc" } },
+        name = "Rage Winterchill",
+    },
+    [619] = {
+        id = 619,
+        instance_id = 534,
+        loot = { { npc_id = 17808, type = "npc" } },
+        name = "Anetheron",
+    },
+    [620] = {
+        id = 620,
+        instance_id = 534,
+        loot = { { npc_id = 17888, type = "npc" } },
+        name = "Kaz'rogal",
+    },
+    [621] = {
+        id = 621,
+        instance_id = 534,
+        loot = { { npc_id = 17842, type = "npc" } },
+        name = "Azgalor",
+    },
+    [622] = {
+        id = 622,
+        instance_id = 534,
+        loot = { { npc_id = 17968, type = "npc" } },
+        name = "Archimonde",
+    },
+    [623] = {
+        id = 623,
+        instance_id = 548,
+        loot = { { npc_id = 21216, type = "npc" } },
+        name = "Hydross the Unstable",
+    },
+    [624] = {
+        id = 624,
+        instance_id = 548,
+        loot = { { npc_id = 21217, type = "npc" } },
+        name = "The Lurker Below",
+    },
+    [625] = {
+        id = 625,
+        instance_id = 548,
+        loot = { { npc_id = 21215, type = "npc" } },
+        name = "Leotheras the Blind",
+    },
+    [626] = {
+        id = 626,
+        instance_id = 548,
+        loot = { { npc_id = 21214, type = "npc" } },
+        name = "Fathom-Lord Karathress",
+    },
+    [627] = {
+        id = 627,
+        instance_id = 548,
+        loot = { { npc_id = 21213, type = "npc" } },
+        name = "Morogrim Tidewalker",
+    },
+    [628] = {
+        id = 628,
+        instance_id = 548,
+        loot = { { npc_id = 21212, type = "npc" } },
+        name = "Lady Vashj",
+    },
+    [649] = {
+        id = 649,
+        instance_id = 565,
+        loot = { { npc_id = 18831, type = "npc" } },
+        name = "High King Maulgar",
+    },
+    [650] = {
+        id = 650,
+        instance_id = 565,
+        loot = { { npc_id = 19044, type = "npc" } },
+        name = "Gruul the Dragonkiller",
+    },
+    [651] = {
+        id = 651,
+        instance_id = 544,
+        loot = { { npc_id = 17257, type = "npc" } },
+        name = "Magtheridon",
+    },
+    [652] = {
+        id = 652,
+        instance_id = 532,
+        loot = { { npc_id = 16152, type = "npc" } },
+        name = "Attumen the Huntsman",
+    },
+    [653] = {
+        id = 653,
+        instance_id = 532,
+        loot = { { npc_id = 15687, type = "npc" } },
+        name = "Moroes",
+    },
+    [654] = {
+        id = 654,
+        instance_id = 532,
+        loot = { { npc_id = 16457, type = "npc" } },
+        name = "Maiden of Virtue",
+    },
+    [655] = {
+        id = 655,
+        instance_id = 532,
+        loot = {
+            {
+                npc_id = 17521,
+                type = "npc",
+            },
+            {
+                npc_id = 17533,
+                type = "npc",
+            },
+            {
+                npc_id = 17534,
+                type = "npc",
+            },
+            {
+                npc_id = 18168,
+                type = "npc",
+            },
+        },
+        name = "Opera Hall",
+    },
+    [656] = {
+        id = 656,
+        instance_id = 532,
+        loot = { { npc_id = 15691, type = "npc" } },
+        name = "The Curator",
+    },
+    [657] = {
+        id = 657,
+        instance_id = 532,
+        loot = { { npc_id = 15688, type = "npc" } },
+        name = "Terestian Illhoof",
+    },
+    [658] = {
+        id = 658,
+        instance_id = 532,
+        loot = { { npc_id = 16524, type = "npc" } },
+        name = "Shade of Aran",
+    },
+    [659] = {
+        id = 659,
+        instance_id = 532,
+        loot = { { npc_id = 15689, type = "npc" } },
+        name = "Netherspite",
+    },
+    [660] = {
+        id = 660,
+        instance_id = 532,
+        loot = { { object_id = 185119, type = "object" } },
+        name = "Chess Event",
+    },
+    [661] = {
+        id = 661,
+        instance_id = 532,
+        loot = { { npc_id = 15690, type = "npc" } },
+        name = "Prince Malchezaar",
+    },
+    [662] = {
+        id = 662,
+        instance_id = 532,
+        loot = { { npc_id = 17225, type = "npc" } },
+        name = "Nightbane",
+    },
+    [724] = {
+        id = 724,
+        instance_id = 580,
+        loot = { { npc_id = 24850, type = "npc" } },
+        name = "Kalecgos",
+    },
+    [725] = {
+        id = 725,
+        instance_id = 580,
+        loot = { { npc_id = 24882, type = "npc" } },
+        name = "Brutallus",
+    },
+    [726] = {
+        id = 726,
+        instance_id = 580,
+        loot = { { npc_id = 25038, type = "npc" } },
+        name = "Felmyst",
+    },
+    [727] = {
+        id = 727,
+        instance_id = 580,
+        loot = { { npc_id = 25166, type = "npc" }, { npc_id = 25165, type = "npc" } },
+        name = "Eredar Twins",
+    },
+    [728] = {
+        id = 728,
+        instance_id = 580,
+        loot = { { npc_id = 25741, type = "npc" } },
+        name = "M'uru",
+    },
+    [729] = {
+        id = 729,
+        instance_id = 580,
+        loot = { { npc_id = 25315, type = "npc" } },
+        name = "Kil'jaeden",
+    },
+    [730] = {
+        id = 730,
+        instance_id = 550,
+        loot = { { npc_id = 19514, type = "npc" } },
+        name = "Al'ar",
+    },
+    [731] = {
+        id = 731,
+        instance_id = 550,
+        loot = { { npc_id = 19516, type = "npc" } },
+        name = "Void Reaver",
+    },
+    [732] = {
+        id = 732,
+        instance_id = 550,
+        loot = { { npc_id = 18805, type = "npc" } },
+        name = "High Astromancer Solarian",
+    },
+    [733] = {
+        id = 733,
+        instance_id = 550,
+        loot = { { npc_id = 19622, type = "npc" } },
+        name = "Kael'thas Sunstrider",
+    },
+    [1189] = {
+        id = 1189,
+        instance_id = 568,
+        loot = { { npc_id = 23574, type = "npc" }, { object_id = 187021, type = "object" } },
+        name = "Akil'zon",
+    },
+    [1190] = {
+        id = 1190,
+        instance_id = 568,
+        loot = { { npc_id = 23576, type = "npc" }, { object_id = 186648, type = "object" } },
+        name = "Nalorakk",
+    },
+    [1191] = {
+        id = 1191,
+        instance_id = 568,
+        loot = { { npc_id = 23578, type = "npc" }, { object_id = 186667, type = "object" } },
+        name = "Jan'alai",
+    },
+    [1192] = {
+        id = 1192,
+        instance_id = 568,
+        loot = { { npc_id = 23577, type = "npc" }, { object_id = 186672, type = "object" } },
+        name = "Halazzi",
+    },
+    [1193] = {
+        id = 1193,
+        instance_id = 568,
+        loot = { { npc_id = 24239, type = "npc" } },
+        name = "Hex Lord Malacrass",
+    },
+    [1194] = {
+        id = 1194,
+        instance_id = 568,
+        loot = { { npc_id = 23863, type = "npc" } },
+        name = "Zul'jin",
+    },
+}
