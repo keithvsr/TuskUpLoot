@@ -135,3 +135,19 @@ function Data.requestEncounterItemData(encounterId)
     C_Item.RequestLoadItemDataByID(itemId)
   end
 end
+
+function Data.requestInstanceItemData(instanceId)
+  if not instanceId or not C_Item or not C_Item.RequestLoadItemDataByID then
+    return
+  end
+
+  local seen = {}
+  for _, encounterId in ipairs(Data.getInstanceEncounterIds(instanceId)) do
+    for _, itemId in ipairs(Data.getEncounterLootIds(encounterId)) do
+      if not seen[itemId] then
+        seen[itemId] = true
+        C_Item.RequestLoadItemDataByID(itemId)
+      end
+    end
+  end
+end

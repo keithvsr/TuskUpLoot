@@ -49,6 +49,9 @@ local function enterRaidInstance(instanceId)
   end
   eventFrame:RegisterEvent("ENCOUNTER_START")
   eventFrame:RegisterEvent("ENCOUNTER_END")
+  if TuskUpLoot.Data and TuskUpLoot.Data.requestInstanceItemData then
+    TuskUpLoot.Data.requestInstanceItemData(instanceId)
+  end
   notifyRaidStateChanged()
 end
 
