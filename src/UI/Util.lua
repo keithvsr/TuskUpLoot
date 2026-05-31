@@ -105,6 +105,52 @@ function Util.formatItemLine(item)
   return itemLink or (name and ("[" .. name .. "]")) or ("[Item " .. tostring(item.id) .. "]")
 end
 
+local COSMETIC_SLOTS = {
+  shirt = true,
+  tabard = true,
+}
+
+local COSMETIC_EQUIP_LOCS = {
+  INVTYPE_BODY = true,
+  INVTYPE_TABARD = true,
+}
+
+function Util.isCosmeticItem(itemId)
+  if not itemId then
+    return false
+  end
+
+  local DB = TuskUpLoot.DB
+  if DB and DB.getItem then
+    local item = DB.getItem(itemId)
+    if item and item.slot then
+      local slot = string.lower(tostring(item.slot))
+      if COSMETIC_SLOTS[slot] then
+        return true
+      end
+    end
+  end
+
+  if C_Item and C_Item.GetItemInfo then
+    local equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    if equipLoc and COSMETIC_EQUIP_LOCS[equipLoc] then
+      return true
+    end
+  end
+
+  return false
+end
+
+function Util.filterVisibleItemIds(itemIds)
+  local out = {}
+  for _, itemId in ipairs(itemIds or {}) do
+    if not Util.isCosmeticItem(itemId) then
+      out[#out + 1] = itemId
+    end
+  end
+  return out
+end
+
 function Util.gearSetItemIds(items)
   local itemIds = {}
   if type(items) ~= "table" then
@@ -125,7 +171,24 @@ function Util.gearSetItemIds(items)
   table.sort(itemIds, function(a, b)
     return (tonumber(a) or 0) < (tonumber(b) or 0)
   end)
-  return itemIds
+  return Util.filterVisibleItemIds(itemIds)
+end
+
+function Util.getOrCreateLootRow(container, rows, index, rowHeight)
+  local row = rows[index]
+  if not row then
+    row = CreateFrame("Button", nil, container)
+    row:SetHeight(rowHeight)
+    row.labelFS = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.labelFS:SetPoint("LEFT", 4, 0)
+    row.labelFS:SetPoint("RIGHT", row, "RIGHT", -72, 0)
+    row.labelFS:SetJustifyH("LEFT")
+    row.countFS = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.countFS:SetPoint("RIGHT", -4, 0)
+    row.countFS:SetJustifyH("RIGHT")
+    rows[index] = row
+  end
+  return row
 end
 
 function Util.filterNeedle()

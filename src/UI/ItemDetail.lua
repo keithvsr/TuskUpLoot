@@ -96,12 +96,7 @@ local function renderNeedsList(needsRows, selectedItemId)
     if fr.markBtn then
       fr.markBtn:SetScript("OnClick", function()
         TuskUpLoot.DB.markItemAcquired(selectedItemId, row.characterKey)
-        if UI.activeTab == "raids" then
-          UI.renderRaidPanel()
-          UI.rebuildRaidList()
-        else
-          UI.renderSelectedItem()
-        end
+        UI.renderSelectedItem()
       end)
     end
 
@@ -128,17 +123,38 @@ function UI.renderSelectedItem()
     return
   end
 
-  if UI.activeTab == "characters" then
+  if UI.activeTab ~= "items" then
     return
+  end
+
+  if UI.encounterLootContainer then
+    UI.encounterLootContainer:Hide()
+  end
+  if UI.charDetailFS then
+    UI.charDetailFS:Hide()
+  end
+  if UI.charGearContainer then
+    UI.charGearContainer:Hide()
+  end
+
+  if UI.detailBackBtn then
+    if UI.returnContext then
+      UI.detailBackBtn:Show()
+    else
+      UI.detailBackBtn:Hide()
+    end
   end
 
   local DB = TuskUpLoot.DB
   local selectedItemId = UI.selectedItemId
   local item = selectedItemId and DB and DB.getItem(selectedItemId)
 
-  if not item then
+  if not selectedItemId then
     if UI.itemIconBtn then
       UI.itemIconBtn:Hide()
+    end
+    if UI.detailBackBtn and UI.returnContext then
+      UI.detailBackBtn:Show()
     end
     UI.detailLinkFS:SetText("")
     UI.needsTitle:SetText(
@@ -150,6 +166,32 @@ function UI.renderSelectedItem()
     UI.hasText:SetText("")
     UI.hasTitle:Hide()
     UI.hasText:Hide()
+    UI.needsTitle:Show()
+    UI.detailScrollChild:SetHeight(math.max(1, UI.needsTitle:GetStringHeight() + 8))
+    return
+  end
+
+  if not item then
+    if UI.itemIconBtn then
+      Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
+      UI.itemIconBtn:Show()
+    end
+    local _, itemLink = C_Item.GetItemInfo(selectedItemId)
+    if not itemLink and TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
+      local name = TuskUpLoot.Data.getItemDisplayName(selectedItemId)
+      if name then
+        itemLink = "|cffffffff[" .. name .. "]|r"
+      end
+    end
+    UI.detailLinkFS:SetText(itemLink or ("|cffffffff[Item " .. tostring(selectedItemId) .. "]|r"))
+    UI.needsTitle:SetText("No characters linked to this item in saved data.")
+    clearNeedsList()
+    UI.needsListContainer:Hide()
+    UI.hasTitle:Hide()
+    UI.hasText:Hide()
+    UI.needsTitle:Show()
+    UI.detailScrollChild:SetHeight(math.max(1,
+      (UI.needsTitle:GetStringHeight() or 0) + (UI.detailLinkFS:GetStringHeight() or 0) + 12))
     return
   end
 
@@ -163,8 +205,11 @@ function UI.renderSelectedItem()
   UI.hasText:Hide()
 
   if UI.itemIconBtn then
-    Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
     UI.itemIconBtn:Show()
+    Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
+    UI.detailLinkFS:ClearAllPoints()
+    UI.detailLinkFS:SetPoint("LEFT", UI.itemIconBtn, "RIGHT", 10, 0)
+    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -60, 0)
   end
 
   local _, itemLink = C_Item.GetItemInfo(selectedItemId)

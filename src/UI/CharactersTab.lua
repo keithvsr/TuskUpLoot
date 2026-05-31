@@ -2,15 +2,55 @@
 
 local UI = TuskUpLoot.UI
 local Util = UI.Util
+local C = UI.Constants
+
+local function clearCharGearContainer()
+  local container = UI.charGearContainer
+  if not container then
+    return
+  end
+
+  if container.headers then
+    for _, h in ipairs(container.headers) do
+      if h then
+        h:Hide()
+      end
+    end
+  end
+  if container.buttons then
+    for _, b in ipairs(container.buttons) do
+      if b then
+        b:Hide()
+      end
+    end
+  end
+  container:SetHeight(1)
+end
 
 function UI.renderCharacterPanel()
   if not UI.charDetailFS then
     return
   end
 
+  if UI.encounterLootContainer then
+    UI.encounterLootContainer:Hide()
+  end
+  if UI.needsTitle then UI.needsTitle:Hide() end
+  if UI.needsListContainer then UI.needsListContainer:Hide() end
+  if UI.hasTitle then UI.hasTitle:Hide() end
+  if UI.hasText then UI.hasText:Hide() end
+  if UI.detailBackBtn then UI.detailBackBtn:Hide() end
+  if UI.itemIconBtn then UI.itemIconBtn:Hide() end
+
+  UI.charDetailFS:Show()
+  if UI.charGearContainer then
+    UI.charGearContainer:Show()
+  end
+
   local DB = TuskUpLoot.DB
   if not DB then
     UI.charDetailFS:SetText("TuskUpLoot: DB module not loaded.")
+    clearCharGearContainer()
     return
   end
 
@@ -21,6 +61,7 @@ function UI.renderCharacterPanel()
   local db = _G.TuskUpLootDB
   if not db or not db.characters then
     UI.charDetailFS:SetText("No saved data yet.")
+    clearCharGearContainer()
     return
   end
 
@@ -40,40 +81,91 @@ function UI.renderCharacterPanel()
     if character.class then
       lines[#lines + 1] = string.format("Class: %s", character.class)
     end
-    lines[#lines + 1] = ""
+
+    UI.charDetailFS:SetText(table.concat(lines, "\n"))
+
+    local container = UI.charGearContainer
+    if not container then
+      UI.detailScrollChild:SetHeight(math.max(1, UI.charDetailFS:GetStringHeight() + 8))
+      return
+    end
+
+    clearCharGearContainer()
+    container.headers = container.headers or {}
+    container.buttons = container.buttons or {}
+
+    local headerIndex = 0
+    local btnIndex = 0
+    local y = 0
+    local btnHeight = C.ROW_HEIGHT
+    local sectionGap = 4
 
     local orderedSets = DB.characterGearSets(selectedKey)
     if not orderedSets or #orderedSets == 0 then
-      lines[#lines + 1] = "(No gear sets stored for this character.)"
+      headerIndex = 1
+      local hdr = container.headers[headerIndex]
+      if not hdr then
+        hdr = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        container.headers[headerIndex] = hdr
+      end
+      hdr:ClearAllPoints()
+      hdr:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -y)
+      hdr:SetWidth(container:GetWidth() - 8)
+      hdr:SetJustifyH("LEFT")
+      hdr:SetText("(No gear sets stored for this character.)")
+      hdr:Show()
+      y = y + (hdr:GetStringHeight() or 14)
     else
-      local lineBudget = 200
       for _, row in ipairs(orderedSets) do
         local gs = row.gearSet
         if gs then
-          lines[#lines + 1] = string.format("--- %s (phase %s) ---", gs.name or row.key, tostring(gs.phase or "?"))
+          headerIndex = headerIndex + 1
+          local hdr = container.headers[headerIndex]
+          if not hdr then
+            hdr = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            container.headers[headerIndex] = hdr
+          end
+          hdr:ClearAllPoints()
+          hdr:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -y)
+          hdr:SetWidth(container:GetWidth() - 8)
+          hdr:SetJustifyH("LEFT")
+          hdr:SetText(string.format("--- %s (phase %s) ---", gs.name or row.key, tostring(gs.phase or "?")))
+          hdr:Show()
+          y = y + (hdr:GetStringHeight() or 14) + sectionGap
+
           for _, id in ipairs(Util.gearSetItemIds(gs.items)) do
-            if #lines >= lineBudget then
-              lines[#lines + 1] = "... (truncated)"
-              break
-            end
+            btnIndex = btnIndex + 1
+            local btn = Util.getOrCreateListButton(container, container.buttons, btnIndex, btnHeight)
+            btn:ClearAllPoints()
+            btn:SetPoint("TOPLEFT", container, "TOPLEFT", 8, -y)
+            btn:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+
             local meta = db.items and db.items[id]
-            lines[#lines + 1] = Util.formatItemLine(meta or {
+            local itemLine = Util.formatItemLine(meta or {
               id = id,
               name = TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName(id),
             })
+            btn.text:SetText(itemLine)
+
+            local idCapture = id
+            btn:SetScript("OnClick", function()
+              UI.openItemDetail(idCapture, nil)
+            end)
+            btn:Show()
+            y = y + btnHeight
           end
-          lines[#lines + 1] = ""
-        end
-        if #lines >= lineBudget then
-          break
+          y = y + sectionGap
         end
       end
     end
 
-    UI.charDetailFS:SetText(table.concat(lines, "\n"))
-    UI.detailScrollChild:SetHeight(math.max(1, UI.charDetailFS:GetStringHeight() + 8))
+    container:SetHeight(math.max(1, y))
+    local totalH = (UI.charDetailFS:GetStringHeight() or 0) + 4 + y + 8
+    UI.detailScrollChild:SetHeight(math.max(1, totalH))
     return
   end
+
+  clearCharGearContainer()
 
   local anyChars = false
   for _ in pairs(db.characters) do

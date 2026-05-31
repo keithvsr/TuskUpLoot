@@ -24,6 +24,6 @@ UI.updateIntervalSeconds = UI.updateIntervalSeconds or 0.5
 
 UI.activeTab = UI.activeTab or "characters"
 UI.expandedInstances = UI.expandedInstances or {}
-UI.expandedEncounters = UI.expandedEncounters or {}
 UI.focusInstanceId = UI.focusInstanceId or nil
+UI.returnContext = UI.returnContext or nil
 UI.focusEncounterId = UI.focusEncounterId or nil

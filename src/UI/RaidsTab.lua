@@ -1,10 +1,9 @@
--- Raids tab: instance/encounter loot tree + loot-master focus panel.
+-- Raids tab: instance/encounter tree + encounter loot in right panel.
 
 local UI = TuskUpLoot.UI
 local Util = UI.Util
 local C = UI.Constants
 
--- WoW fonts omit most Unicode (▼ ▶ ✓ ○); use ASCII + |cff color codes instead.
 local function treePrefix(expanded)
   return expanded and "‹ " or "› "
 end
@@ -16,58 +15,162 @@ local function clearPrefix(cleared)
   return "• "
 end
 
-local function pickBestLootItem(encounterId)
-  local Data = TuskUpLoot.Data
-  if not Data then
+local function raidReturnContext()
+  if not UI.focusEncounterId then
     return nil
   end
+  return {
+    tab = "raids",
+    focusEncounterId = UI.focusEncounterId,
+  }
+end
 
-  local state = Util.getRaidState()
-  local lootIds
-  if state.LastKilledBoss then
-    lootIds = Data.getEncounterLootIdsForSource(encounterId, "npc", state.LastKilledBoss)
-    if not lootIds or #lootIds == 0 then
-      lootIds = Data.getEncounterLootIds(encounterId)
-    end
-  else
-    lootIds = Data.getEncounterLootIds(encounterId)
+local function selectEncounter(encounterId)
+  UI.focusEncounterId = encounterId
+  if TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
+    TuskUpLoot.Data.requestEncounterItemData(encounterId)
   end
-
-  local bestId
-  local bestNeed = 0
-  for _, itemId in ipairs(lootIds or {}) do
-    local needCount = select(1, Data.getItemNeedSummary(itemId))
-    if needCount > bestNeed then
-      bestNeed = needCount
-      bestId = itemId
-    end
+  UI.rebuildRaidList()
+  if UI.activeTab == "raids" then
+    UI.renderEncounterLootPanel()
   end
-
-  if bestId then
-    return bestId
-  end
-  if lootIds and lootIds[1] then
-    return lootIds[1]
-  end
-  return nil
 end
 
 local function focusEncounterLoot(encounterId)
   if not encounterId then
     return
   end
+  selectEncounter(encounterId)
+end
 
-  UI.focusEncounterId = encounterId
-  if TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
-    TuskUpLoot.Data.requestEncounterItemData(encounterId)
+function UI.renderEncounterLootPanel()
+  if UI.activeTab ~= "raids" then
+    return
+  end
+  if not Util.isDetailReady() then
+    return
   end
 
-  local itemId = pickBestLootItem(encounterId)
-  UI.selectedItemId = itemId
-  if UI.activeTab == "raids" and UI.frame then
-    UI.rebuildRaidList()
-    UI.renderRaidPanel()
+  if UI.itemIconBtn then
+    UI.itemIconBtn:Hide()
   end
+  if UI.detailLinkFS and UI.detailHeader then
+    UI.detailLinkFS:ClearAllPoints()
+    UI.detailLinkFS:SetPoint("LEFT", UI.detailHeader, "LEFT", 0, 0)
+    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -4, 0)
+  end
+  if UI.needsTitle then UI.needsTitle:Hide() end
+  if UI.needsListContainer then UI.needsListContainer:Hide() end
+  if UI.hasTitle then UI.hasTitle:Hide() end
+  if UI.hasText then UI.hasText:Hide() end
+  if UI.charDetailFS then UI.charDetailFS:Hide() end
+  if UI.charGearContainer then UI.charGearContainer:Hide() end
+  if UI.detailBackBtn then UI.detailBackBtn:Hide() end
+
+  local container = UI.encounterLootContainer
+  if not container then
+    return
+  end
+
+  local focusEnc = UI.focusEncounterId
+  local Data = TuskUpLoot.Data
+
+  if not focusEnc then
+    if UI.detailLinkFS then
+      UI.detailLinkFS:SetText("Select an encounter")
+    end
+    container:Hide()
+    UI.detailScrollChild:SetHeight(8)
+    return
+  end
+
+  local encounter = Data and Data.Encounters and Data.Encounters[focusEnc]
+  if UI.detailLinkFS then
+    UI.detailLinkFS:SetText(encounter and (encounter.name or ("Encounter " .. tostring(focusEnc))) or "")
+  end
+
+  local lootIds = {}
+  if Data then
+    local state = Util.getRaidState()
+    if state.LastKilledBoss then
+      lootIds = Data.getEncounterLootIdsForSource(focusEnc, "npc", state.LastKilledBoss)
+      if not lootIds or #lootIds == 0 then
+        lootIds = Data.getEncounterLootIds(focusEnc)
+      end
+    else
+      lootIds = Data.getEncounterLootIds(focusEnc)
+    end
+  end
+  lootIds = Util.filterVisibleItemIds(lootIds or {})
+
+  local rows = container.rows or {}
+  container.rows = rows
+  for _, row in ipairs(rows) do
+    row:Hide()
+  end
+
+  if #lootIds == 0 then
+    container:Show()
+    container:SetHeight(20)
+    if not container.emptyFS then
+      container.emptyFS = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+      container.emptyFS:SetPoint("TOPLEFT", container, "TOPLEFT", 4, 0)
+    end
+    container.emptyFS:SetText("No loot for this encounter.")
+    container.emptyFS:Show()
+    UI.detailScrollChild:SetHeight(math.max(1, 28))
+    return
+  end
+
+  if container.emptyFS then
+    container.emptyFS:Hide()
+  end
+
+  local rowHeight = C.ROW_HEIGHT
+  local y = 0
+  local rowIndex = 0
+  local returnContext = raidReturnContext()
+
+  for _, itemId in ipairs(lootIds) do
+    rowIndex = rowIndex + 1
+    local row = Util.getOrCreateLootRow(container, rows, rowIndex, rowHeight)
+    local needCount = 0
+    if Data and Data.getItemNeedSummary then
+      needCount = select(1, Data.getItemNeedSummary(itemId))
+    end
+
+    local itemLabel = Util.formatItemLine({
+      id = itemId,
+      name = Data and Data.getItemDisplayName(itemId),
+    })
+    local countLabel = ""
+    if needCount > 0 then
+      countLabel = string.format("|cff00ff00(%d need)|r", needCount)
+    end
+
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
+    row:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    row.labelFS:SetText(itemLabel)
+    row.countFS:SetText(countLabel)
+
+    local itemCapture = itemId
+    row:SetScript("OnClick", function()
+      UI.openItemDetail(itemCapture, returnContext)
+    end)
+    row:Show()
+    y = y + rowHeight
+  end
+
+  for j = rowIndex + 1, #rows do
+    if rows[j] and rows[j].labelFS then
+      rows[j]:Hide()
+    end
+  end
+
+  container:SetHeight(math.max(1, y))
+  container:Show()
+  UI.detailScrollChild:SetHeight(math.max(1, y + 8))
 end
 
 function UI.rebuildRaidList()
@@ -123,11 +226,12 @@ function UI.rebuildRaidList()
           if encounter then
             rowIndex = rowIndex + 1
             local encRow = Util.getOrCreateRaidRow(container, rows, rowIndex)
-            local encExpanded = UI.expandedEncounters[encounterId]
             local cleared = state.ClearedEncounters and state.ClearedEncounters[encounterId]
-            local encLabel = "  " .. treePrefix(encExpanded) .. clearPrefix(cleared)
+            local encLabel = "  " .. clearPrefix(cleared)
                 .. (encounter.name or tostring(encounterId))
-            if encounterId == state.LastEncounter then
+            if encounterId == UI.focusEncounterId then
+              encLabel = "|cffffff00" .. encLabel .. "|r"
+            elseif encounterId == state.LastEncounter then
               encLabel = "|cffffff00" .. encLabel .. "|r"
             end
 
@@ -138,53 +242,11 @@ function UI.rebuildRaidList()
 
             local encCapture = encounterId
             encRow:SetScript("OnClick", function()
-              UI.expandedEncounters[encCapture] = not UI.expandedEncounters[encCapture]
-              UI.focusEncounterId = encCapture
-              UI.rebuildRaidList()
-              if UI.activeTab == "raids" then
-                UI.renderRaidPanel()
-              end
+              selectEncounter(encCapture)
             end)
             encRow.text:SetText(encLabel)
             encRow:Show()
             y = y - C.ROW_HEIGHT
-
-            if encExpanded then
-              local lootIds = Data.getEncounterLootIds(encounterId)
-              for _, itemId in ipairs(lootIds) do
-                rowIndex = rowIndex + 1
-                local lootRow = Util.getOrCreateRaidRow(container, rows, rowIndex)
-                local needCount, hasCount = Data.getItemNeedSummary(itemId)
-                local itemLabel = Util.formatItemLine({
-                  id = itemId,
-                  name = Data.getItemDisplayName(itemId),
-                })
-                if needCount > 0 then
-                  itemLabel = itemLabel .. string.format(" |cff00ff00(%d need)|r", needCount)
-                elseif hasCount > 0 then
-                  itemLabel = itemLabel .. string.format(" (%d has)", hasCount)
-                end
-                if UI.selectedItemId == itemId then
-                  itemLabel = "|cffffff00" .. itemLabel .. "|r"
-                end
-
-                lootRow:ClearAllPoints()
-                lootRow:SetPoint("TOPLEFT", container, "TOPLEFT", C.INDENT_LOOT, y)
-                lootRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
-                lootRow.text:SetPoint("LEFT", C.INDENT_LOOT + 4, 0)
-
-                local itemCapture = itemId
-                lootRow:SetScript("OnClick", function()
-                  UI.selectedItemId = itemCapture
-                  UI.focusEncounterId = encCapture
-                  UI.rebuildRaidList()
-                  UI.renderRaidPanel()
-                end)
-                lootRow.text:SetText("    " .. itemLabel)
-                lootRow:Show()
-                y = y - C.ROW_HEIGHT
-              end
-            end
           end
         end
       end
@@ -195,47 +257,7 @@ function UI.rebuildRaidList()
 end
 
 function UI.renderRaidPanel()
-  if UI.activeTab ~= "raids" then
-    return
-  end
-  if not Util.isDetailReady() then
-    return
-  end
-
-  local focusEnc = UI.focusEncounterId
-  if not focusEnc then
-    if UI.itemIconBtn then
-      UI.itemIconBtn:Hide()
-    end
-    UI.detailLinkFS:SetText("")
-    UI.needsTitle:SetText("Select an encounter or wait for a boss kill.")
-    UI.needsTitle:Show()
-    UI.clearNeedsList()
-    UI.needsListContainer:Hide()
-    UI.hasTitle:Hide()
-    UI.hasText:Hide()
-    UI.detailScrollChild:SetHeight(math.max(1, UI.needsTitle:GetStringHeight() + 8))
-    return
-  end
-
-  local encounter = TuskUpLoot.Data and TuskUpLoot.Data.Encounters and TuskUpLoot.Data.Encounters[focusEnc]
-  if encounter and not UI.selectedItemId then
-    if UI.itemIconBtn then
-      UI.itemIconBtn:Hide()
-    end
-    UI.detailLinkFS:SetText(encounter.name or ("Encounter " .. tostring(focusEnc)))
-    UI.needsTitle:SetText("Select a loot item below to see guild needs.")
-    UI.needsTitle:Show()
-    UI.clearNeedsList()
-    UI.needsListContainer:Hide()
-    UI.hasTitle:Hide()
-    UI.hasText:Hide()
-    UI.detailScrollChild:SetHeight(math.max(1,
-      (UI.needsTitle:GetStringHeight() or 0) + (UI.detailLinkFS:GetStringHeight() or 0) + 12))
-    return
-  end
-
-  UI.renderSelectedItem()
+  UI.renderEncounterLootPanel()
 end
 
 function UI.onRaidStateChanged()
@@ -259,11 +281,10 @@ function UI.onRaidStateChanged()
   end
 
   if state.LastEncounter then
-    UI.expandedEncounters[state.LastEncounter] = true
     focusEncounterLoot(state.LastEncounter)
   elseif UI.activeTab == "raids" and UI.frame then
     UI.rebuildRaidList()
-    UI.renderRaidPanel()
+    UI.renderEncounterLootPanel()
   end
 
   Util.updateFrameTitle()

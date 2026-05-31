@@ -44,7 +44,7 @@ function UI.rebuildItemList()
 
   for _, itemId in ipairs(sortedIds) do
     local item = items[itemId]
-    if item and itemMatchesFilter(itemId, item, needle) then
+    if item and not Util.isCosmeticItem(itemId) and itemMatchesFilter(itemId, item, needle) then
       i = i + 1
       local itemLine = Util.formatItemLine(item)
 
@@ -55,7 +55,7 @@ function UI.rebuildItemList()
 
       local idCapture = itemId
       btn:SetScript("OnClick", function()
-        UI.setSelectedItemId(idCapture)
+        UI.openItemDetail(idCapture, nil)
       end)
 
       local isSelected = (UI.selectedItemId == itemId)

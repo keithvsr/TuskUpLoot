@@ -263,6 +263,44 @@ function UI.ensureFrame()
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 1)
   end
 
+  ---@diagnostic disable-next-line: undefined-global
+  table.insert(UISpecialFrames, "TuskUpLootMainFrame")
+
+  local encounterLootContainer = CreateFrame("Frame", nil, detailScrollChild)
+  encounterLootContainer:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 0, 0)
+  encounterLootContainer:SetWidth(detailScrollChild:GetWidth())
+  encounterLootContainer:SetHeight(1)
+  encounterLootContainer:Hide()
+  UI.encounterLootContainer = encounterLootContainer
+
+  local charGearContainer = CreateFrame("Frame", nil, detailScrollChild)
+  charGearContainer:SetPoint("TOPLEFT", charDetailFS, "BOTTOMLEFT", 0, -4)
+  charGearContainer:SetWidth(detailScrollChild:GetWidth())
+  charGearContainer:SetHeight(1)
+  charGearContainer:Hide()
+  UI.charGearContainer = charGearContainer
+
+  local backBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
+  backBtn:SetSize(52, 22)
+  backBtn:SetPoint("TOPRIGHT", detailHeader, "TOPRIGHT", 0, 0)
+  backBtn:SetText("Back")
+  backBtn:Hide()
+  backBtn:SetScript("OnClick", function()
+    local ctx = UI.returnContext
+    if not ctx then
+      return
+    end
+    UI.returnContext = nil
+    if ctx.focusEncounterId then
+      UI.focusEncounterId = ctx.focusEncounterId
+    end
+    UI.setActiveTab("raids")
+    if UI.renderEncounterLootPanel then
+      UI.renderEncounterLootPanel()
+    end
+  end)
+  UI.detailBackBtn = backBtn
+
   UI.frame = f
   TuskUpLoot.frame = f
 

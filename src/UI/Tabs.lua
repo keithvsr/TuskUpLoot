@@ -55,25 +55,45 @@ local function updateTabVisibility()
 
   local detailLabels = {
     characters = "Gear sets",
-    raids = "Who needs it",
+    raids = "Loot",
     items = "Who needs it",
   }
   if UI.detailSectionLabel then
     UI.detailSectionLabel:SetText(detailLabels[tab] or "")
   end
 
-  local showItemDetail = (tab == "items" or tab == "raids")
+  local showItemDetailHeader = (tab == "items")
+  local showRaidHeader = (tab == "raids")
+
   if UI.detailHeader then
-    UI.detailHeader:SetShown(showItemDetail)
+    UI.detailHeader:SetShown(showItemDetailHeader or showRaidHeader)
   end
+  if UI.itemIconBtn then
+    UI.itemIconBtn:SetShown(tab == "items" and UI.selectedItemId ~= nil)
+  end
+
   if UI.charDetailFS then
     UI.charDetailFS:SetShown(tab == "characters")
   end
-  if tab == "characters" then
+  if UI.charGearContainer then
+    UI.charGearContainer:SetShown(tab == "characters")
+  end
+  if UI.encounterLootContainer then
+    UI.encounterLootContainer:SetShown(tab == "raids")
+  end
+
+  if tab == "characters" or tab == "raids" then
     if UI.needsTitle then UI.needsTitle:Hide() end
     if UI.needsListContainer then UI.needsListContainer:Hide() end
     if UI.hasTitle then UI.hasTitle:Hide() end
     if UI.hasText then UI.hasText:Hide() end
+    if tab == "characters" and UI.detailBackBtn then
+      UI.detailBackBtn:Hide()
+    end
+  end
+
+  if tab ~= "items" and UI.detailBackBtn then
+    UI.detailBackBtn:Hide()
   end
 
   updateTabButtonStyles()
@@ -102,22 +122,18 @@ function UI.setActiveTab(tab)
     UI.renderSelectedItem()
   elseif tab == "raids" then
     UI.rebuildRaidList()
-    UI.renderRaidPanel()
+    UI.renderEncounterLootPanel()
   end
 end
 
-function UI.setSelectedItemId(itemId)
+function UI.openItemDetail(itemId, returnContext)
   UI.selectedItemId = itemId
-  if UI.activeTab == "items" then
-    UI.renderSelectedItem()
-    UI.rebuildItemList()
-  elseif UI.activeTab == "raids" then
-    UI.renderRaidPanel()
-    UI.rebuildRaidList()
-  else
-    UI.renderSelectedItem()
-    UI.rebuildItemList()
-  end
+  UI.returnContext = returnContext
+  UI.setActiveTab("items")
+end
+
+function UI.setSelectedItemId(itemId)
+  UI.openItemDetail(itemId, nil)
 end
 
 function UI.refresh()
@@ -127,7 +143,7 @@ function UI.refresh()
   elseif tab == "items" then
     UI.renderSelectedItem()
   elseif tab == "raids" then
-    UI.renderRaidPanel()
+    UI.renderEncounterLootPanel()
   end
 end
 
@@ -136,7 +152,7 @@ function UI.refreshAfterImport()
   UI.rebuildItemList()
   if UI.activeTab == "raids" then
     UI.rebuildRaidList()
-    UI.renderRaidPanel()
+    UI.renderEncounterLootPanel()
   elseif UI.activeTab == "characters" then
     UI.renderCharacterPanel()
   else
