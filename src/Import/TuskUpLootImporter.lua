@@ -44,6 +44,7 @@ local function extractGearSetFromExport(payload)
     name = payload.name,
     phase = payload.phase,
     items = {},
+    importedAt = time(),
   }
   local acquiredItems = {}
   for _, item in pairs(payload.items) do
