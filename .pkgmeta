@@ -1,5 +1,10 @@
 enable-nolib-creation: no
 
+package-as: TuskUpLoot
+
+move-folders:
+  TuskUpLoot/src: TuskUpLoot
+
 ignore:
   - build.sh
   - dist
