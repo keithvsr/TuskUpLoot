@@ -22,7 +22,8 @@ for f in "${required_files[@]}"; do
   fi
 done
 
-cp -f "${SRC_DIR}/TuskUpLoot.toc" "${OUT_DIR}/"
+TUSKUPLOOT_VERSION="${TUSKUPLOOT_VERSION:-dev}"
+sed "s/@project-version@/${TUSKUPLOOT_VERSION}/g" "${SRC_DIR}/TuskUpLoot.toc" > "${OUT_DIR}/TuskUpLoot.toc"
 
 while IFS= read -r f; do
   rel="${f#${SRC_DIR}/}"

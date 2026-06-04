@@ -3,7 +3,7 @@
 ## Category: Loot
 ## Notes: TBC raid loot catalog and guild BIS import
 ## Author: Kaaser-Nightslayer <Tusk Up>
-## Version: 0.3.0
+## Version: @project-version@
 ## SavedVariables: TuskUpLootDB
 
 Core.lua

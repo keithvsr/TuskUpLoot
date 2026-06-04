@@ -1,0 +1,13 @@
+enable-nolib-creation: no
+
+ignore:
+  - build.sh
+  - dist
+  - .git
+  - .github
+  - .cursor
+  - .vscode
+  - .gitignore
+  - README.md
+  - CHANGELOG.md
+  - LICENSE
