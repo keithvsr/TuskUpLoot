@@ -23,8 +23,8 @@ local function extractCharacterDataFromExport(payload)
   local characterData = {
     name = character.name,
     level = character.level,
-    race = character.race,       -- i.e. Troll, Orc, Undead, etc
-    class = character.gameClass, -- i.e. Warrior, Rogue, Priest, etc
+    race = character.race,                          -- i.e. Troll, Orc, Undead, etc
+    class = character.class or character.gameClass, -- i.e. Warrior, Rogue, Priest, etc
   }
 
   return characterKey, characterData
@@ -111,8 +111,8 @@ function IMP.import(jsonText)
   end
 
   TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
-  TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
+  local _, _, isAnUpdate = TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
   TuskUpLoot.DB.upsertItems(items, characterKey, gearSetKey)
 
-  return payload, nil, characterKey
+  return payload, nil, characterKey, isAnUpdate ~= nil and isAnUpdate or false
 end
