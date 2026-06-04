@@ -13,10 +13,16 @@ Data/Objects.lua
 Data/Zones.lua
 Data/Instances.lua
 Data/Encounters.lua
+Data/TierLinks.lua
 Data/Loot.lua
 DB/TuskUpLootDB.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
+# Sync/SyncCodec.lua
+# Sync/SyncPayload.lua
+# Sync/SyncProtocol.lua
+# Sync/SyncTransport.lua
+# Sync/Sync.lua
 UI/TuskUpLootUI.lua
 UI/Constants.lua
 UI/Util.lua
@@ -26,5 +32,7 @@ UI/ItemsTab.lua
 UI/RaidsTab.lua
 UI/Tabs.lua
 UI/ImportFrame.lua
+UI/SyncOffer.lua
+UI/SyncPicker.lua
 UI/MainFrame.lua
 TuskUpLoot.lua
