@@ -4,10 +4,13 @@
 TuskUpLoot.DB = TuskUpLoot.DB or {}
 local DB = TuskUpLoot.DB
 
+local RAID_RUN_MAX_AGE_SEC = 14 * 24 * 60 * 60
+
 local function getDefaults()
   return {
     items = {},
     characters = {},
+    raidRuns = {},
   }
 end
 
@@ -36,6 +39,12 @@ local function upsertItem(itemId, item)
     if not stored.characters then
       stored.characters = {}
     end
+    if item.slot then
+      stored.slot = item.slot
+    end
+    if item.name and not stored.name then
+      stored.name = item.name
+    end
     for characterKey, charData in pairs(item.characters) do
       local itemCharTable = stored.characters[characterKey]
       if not itemCharTable then
@@ -55,8 +64,72 @@ local function upsertItem(itemId, item)
   end
 end
 
+function DB.getRaidRunKey(mapId, runInstanceId)
+  if not mapId or not runInstanceId or runInstanceId == 0 then
+    return nil
+  end
+  return string.format("%d:%d", mapId, runInstanceId)
+end
+
+function DB.loadRaidRun(runKey)
+  ensureSavedVar()
+  if not runKey or not TuskUpLootDB.raidRuns then
+    return { cleared = {}, lastEncounter = nil }
+  end
+  local run = TuskUpLootDB.raidRuns[runKey]
+  if not run then
+    return { cleared = {}, lastEncounter = nil }
+  end
+  local cleared = {}
+  if run.cleared then
+    for encId, val in pairs(run.cleared) do
+      cleared[encId] = val
+    end
+  end
+  return {
+    cleared = cleared,
+    lastEncounter = run.lastEncounter,
+  }
+end
+
+function DB.saveEncounterClear(runKey, mapId, encounterId)
+  ensureSavedVar()
+  if not runKey or not encounterId then
+    return
+  end
+  if not TuskUpLootDB.raidRuns then
+    TuskUpLootDB.raidRuns = {}
+  end
+  local run = TuskUpLootDB.raidRuns[runKey]
+  if not run then
+    run = { mapId = mapId, cleared = {}, updatedAt = time() }
+    TuskUpLootDB.raidRuns[runKey] = run
+  end
+  if not run.cleared then
+    run.cleared = {}
+  end
+  run.cleared[encounterId] = true
+  run.lastEncounter = encounterId
+  run.mapId = mapId or run.mapId
+  run.updatedAt = time()
+end
+
+function DB.pruneRaidRuns(maxAgeSec)
+  ensureSavedVar()
+  if not TuskUpLootDB.raidRuns then
+    return
+  end
+  local cutoff = time() - (maxAgeSec or RAID_RUN_MAX_AGE_SEC)
+  for runKey, run in pairs(TuskUpLootDB.raidRuns) do
+    if not run.updatedAt or run.updatedAt < cutoff then
+      TuskUpLootDB.raidRuns[runKey] = nil
+    end
+  end
+end
+
 function DB.init()
   ensureSavedVar()
+  DB.pruneRaidRuns()
 end
 
 function DB.upsertCharacter(characterKey, character)
@@ -96,17 +169,73 @@ function DB.upsertGearSet(characterKey, gearSetKey, gearSet)
   if type(characterKey) ~= "string"
       or type(gearSetKey) ~= "string"
       or type(gearSet) ~= "table" then
-    return nil
+    return nil, nil, nil
   end
   local character = TuskUpLootDB.characters[characterKey]
   if not character then
-    return nil
+    return nil, nil, nil
   end
   if not character.gearSets then
     character.gearSets = {}
   end
+  local isAnUpdate = character.gearSets[gearSetKey] ~= nil
   character.gearSets[gearSetKey] = gearSet
-  return characterKey, character.gearSets[gearSetKey]
+  return characterKey, character.gearSets[gearSetKey], isAnUpdate
+end
+
+local function gearSetKeyListWithout(list, gearSetKey)
+  local out = {}
+  for _, key in ipairs(list or {}) do
+    if key ~= gearSetKey then
+      out[#out + 1] = key
+    end
+  end
+  return out
+end
+
+function DB.removeGearSet(characterKey, gearSetKey)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" or type(gearSetKey) ~= "string" then
+    return false
+  end
+
+  local character = TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if not character or not character.gearSets or not character.gearSets[gearSetKey] then
+    return false
+  end
+
+  local gearSet = character.gearSets[gearSetKey]
+  local itemIds = {}
+  if type(gearSet.items) == "table" then
+    for _, id in ipairs(gearSet.items) do
+      itemIds[#itemIds + 1] = id
+    end
+    if #itemIds == 0 then
+      for id in pairs(gearSet.items) do
+        itemIds[#itemIds + 1] = id
+      end
+    end
+  end
+
+  character.gearSets[gearSetKey] = nil
+
+  for _, itemId in ipairs(itemIds) do
+    local item = TuskUpLootDB.items and TuskUpLootDB.items[itemId]
+    if item and item.characters and item.characters[characterKey] then
+      local charMeta = item.characters[characterKey]
+      local remaining = gearSetKeyListWithout(charMeta.gearSets, gearSetKey)
+      if #remaining == 0 then
+        item.characters[characterKey] = nil
+        if next(item.characters) == nil then
+          TuskUpLootDB.items[itemId] = nil
+        end
+      else
+        charMeta.gearSets = remaining
+      end
+    end
+  end
+
+  return true
 end
 
 function DB.sortedItemIDs()
@@ -142,14 +271,20 @@ function DB.getItemAssociatedCharacters(itemId)
   return {}
 end
 
-function DB.markItemAcquired(itemId, characterKey)
+function DB.setItemAcquired(itemId, characterKey, acquired)
   ensureSavedVar()
   if (TuskUpLootDB.items
         and TuskUpLootDB.items[itemId]
         and TuskUpLootDB.items[itemId].characters
         and TuskUpLootDB.items[itemId].characters[characterKey]) then
-    TuskUpLootDB.items[itemId].characters[characterKey].acquired = true
+    TuskUpLootDB.items[itemId].characters[characterKey].acquired = acquired and true or false
+    return true
   end
+  return false
+end
+
+function DB.markItemAcquired(itemId, characterKey)
+  return DB.setItemAcquired(itemId, characterKey, true)
 end
 
 function DB.getItemRollup(itemId)
@@ -243,17 +378,14 @@ function DB.characterGearSets(characterKey)
     keys[#keys + 1] = k
   end
 
-  -- sort by phase, name alphabetically
+  -- newest import first
   table.sort(keys, function(ka, kb)
     local a = gearSets[ka]
     local b = gearSets[kb]
     if not a or not b then
       return ka < kb
     end
-    if a.phase ~= b.phase then
-      return a.phase < b.phase
-    end
-    return (a.name or ka) < (b.name or kb)
+    return (tonumber(a.importedAt) or 0) > (tonumber(b.importedAt) or 0)
   end)
 
   local ordered = {}
@@ -266,6 +398,129 @@ function DB.characterGearSets(characterKey)
   end
 
   return ordered
+end
+
+local function copyGearSet(gearSet)
+  if type(gearSet) ~= "table" then
+    return nil
+  end
+  local copy = {
+    name = gearSet.name,
+    phase = gearSet.phase,
+    importedAt = gearSet.importedAt,
+    items = {},
+  }
+  if type(gearSet.items) == "table" then
+    for i, id in ipairs(gearSet.items) do
+      copy.items[i] = id
+    end
+    if #copy.items == 0 then
+      for id in pairs(gearSet.items) do
+        copy.items[#copy.items + 1] = id
+      end
+    end
+  end
+  return copy
+end
+
+function DB.mergeGearSetIfNewer(characterKey, gearSetKey, incomingGearSet)
+  ensureSavedVar()
+  if type(characterKey) ~= "string"
+      or type(gearSetKey) ~= "string"
+      or type(incomingGearSet) ~= "table" then
+    return false
+  end
+
+  local character = TuskUpLootDB.characters[characterKey]
+  if not character then
+    return false
+  end
+  if not character.gearSets then
+    character.gearSets = {}
+  end
+
+  local existing = character.gearSets[gearSetKey]
+  local incomingAt = tonumber(incomingGearSet.importedAt) or 0
+  local existingAt = existing and tonumber(existing.importedAt) or 0
+
+  if incomingAt > existingAt then
+    character.gearSets[gearSetKey] = copyGearSet(incomingGearSet)
+    return true
+  end
+  return false
+end
+
+function DB.applySyncBundle(bundle)
+  ensureSavedVar()
+  if type(bundle) ~= "table" then
+    return { updated = 0, skipped = 0 }
+  end
+
+  local updated = 0
+  local skipped = 0
+  local updatedGearSets = {}
+
+  local characters = bundle.characters or {}
+  for characterKey, charData in pairs(characters) do
+    if type(charData) == "table" then
+      local meta = {
+        name = charData.name,
+        level = charData.level,
+        race = charData.race,
+        class = charData.class,
+      }
+      DB.upsertCharacter(characterKey, meta)
+
+      if type(charData.gearSets) == "table" then
+        updatedGearSets[characterKey] = updatedGearSets[characterKey] or {}
+        for gearSetKey, gearSet in pairs(charData.gearSets) do
+          if DB.mergeGearSetIfNewer(characterKey, gearSetKey, gearSet) then
+            updated = updated + 1
+            updatedGearSets[characterKey][gearSetKey] = true
+          else
+            skipped = skipped + 1
+          end
+        end
+      end
+    end
+  end
+
+  local items = bundle.items or {}
+  local isFullBundle = bundle.mode == "FULL"
+  for itemId, item in pairs(items) do
+    local shouldUpsert = isFullBundle
+    if not shouldUpsert and type(item) == "table" and type(item.characters) == "table" then
+      for characterKey, charMeta in pairs(item.characters) do
+        local charUpdated = updatedGearSets[characterKey]
+        if charUpdated and type(charMeta) == "table" then
+          for _, gsKey in ipairs(charMeta.gearSets or {}) do
+            if charUpdated[gsKey] then
+              shouldUpsert = true
+              break
+            end
+          end
+        end
+        if shouldUpsert then
+          break
+        end
+      end
+    end
+    if shouldUpsert then
+      upsertItem(itemId, item)
+    end
+  end
+
+  return { updated = updated, skipped = skipped }
+end
+
+function DB.hasSyncableData()
+  ensureSavedVar()
+  if TuskUpLootDB.characters then
+    for _ in pairs(TuskUpLootDB.characters) do
+      return true
+    end
+  end
+  return false
 end
 
 -- function TuskUpLoot.DB.upsertImport(importObj, rawJsonText)
