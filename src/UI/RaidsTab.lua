@@ -15,6 +15,14 @@ local function clearPrefix(cleared)
   return "• "
 end
 
+function UI.expandOnlyInstance(instanceId)
+  for id in pairs(UI.expandedInstances) do
+    UI.expandedInstances[id] = false
+  end
+  UI.expandedInstances[instanceId] = true
+  UI.focusInstanceId = instanceId
+end
+
 local function raidReturnContext()
   if not UI.focusEncounterId then
     return nil
@@ -63,7 +71,8 @@ function UI.renderEncounterLootPanel()
   if UI.needsListContainer then UI.needsListContainer:Hide() end
   if UI.hasTitle then UI.hasTitle:Hide() end
   if UI.hasText then UI.hasText:Hide() end
-  if UI.charDetailFS then UI.charDetailFS:Hide() end
+  if UI.charInfoHeader then UI.charInfoHeader:Hide() end
+  if UI.charSummaryFS then UI.charSummaryFS:Hide() end
   if UI.charGearContainer then UI.charGearContainer:Hide() end
   if UI.detailBackBtn then UI.detailBackBtn:Hide() end
 
@@ -213,7 +222,12 @@ function UI.rebuildRaidList()
 
       local instCapture = instanceId
       row:SetScript("OnClick", function()
-        UI.expandedInstances[instCapture] = not UI.expandedInstances[instCapture]
+        local willExpand = not UI.expandedInstances[instCapture]
+        if willExpand then
+          UI.expandOnlyInstance(instCapture)
+        else
+          UI.expandedInstances[instCapture] = false
+        end
         UI.rebuildRaidList()
       end)
       row.text:SetText(label)
@@ -264,8 +278,7 @@ function UI.onRaidStateChanged()
   local state = Util.getRaidState()
 
   if state.InstanceId then
-    UI.focusInstanceId = state.InstanceId
-    UI.expandedInstances[state.InstanceId] = true
+    UI.expandOnlyInstance(state.InstanceId)
     if UI.frame and UI.frame:IsShown() then
       UI.setActiveTab("raids")
     else

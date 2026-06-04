@@ -27,6 +27,46 @@ function Util.isDetailReady()
   return UI.detailLinkFS and UI.needsTitle and UI.detailScrollChild
 end
 
+function Util.formatCharacterSummaryLine(character, characterKey)
+  if not character then
+    return nil
+  end
+  local name = character.name or characterKey or "?"
+  local class = character.class or "PRIEST"
+  local classColor = C_ClassColor.GetClassColor(class)
+  local hex = classColor and classColor:GenerateHexColor() or "ffffffff"
+  local namePart = "|c" .. hex .. name .. "|r"
+  local race = character.race
+  if race and race ~= "" then
+    return namePart .. " · " .. race
+  end
+  return namePart
+end
+
+function Util.layoutDetailScrollForTab(tab)
+  if not UI.detailScroll or not UI.detailHeader or not UI.frame then
+    return
+  end
+  local C = UI.Constants
+  local scroll = UI.detailScroll
+  local scrollBarWidth = 0
+  if scroll.ScrollBar then
+    scrollBarWidth = scroll.ScrollBar:GetWidth()
+  end
+  scroll:ClearAllPoints()
+  if tab == "characters" and UI.charInfoHeader then
+    scroll:SetPoint("TOPLEFT", UI.charInfoHeader, "BOTTOMLEFT", 0, -6)
+  else
+    scroll:SetPoint("TOPLEFT", UI.detailHeader, "BOTTOMLEFT", 0, -8)
+  end
+  if scroll.ScrollBar then
+    scroll:SetPoint("BOTTOMRIGHT", UI.frame, "BOTTOMRIGHT", -(C.MARGIN_R + scrollBarWidth), C.DETAIL_BOTTOM_CLOSED)
+    scroll.ScrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", -2, 0)
+  else
+    scroll:SetPoint("BOTTOMRIGHT", UI.frame, "BOTTOMRIGHT", -C.MARGIN_R, C.DETAIL_BOTTOM_CLOSED)
+  end
+end
+
 function Util.updateFrameTitle()
   if not UI.frameTitle then
     return
@@ -40,6 +80,72 @@ function Util.updateFrameTitle()
     end
   end
   UI.frameTitle:SetText("TuskUpLoot — Guild")
+end
+
+function UI.dismissAllFrames()
+  -- sync disabled
+  -- if UI.syncPickerFrame then
+  --   UI.syncPickerFrame:Hide()
+  -- end
+  if UI.importFrame then
+    UI.importFrame:Hide()
+  end
+  -- if StaticPopup_Hide then
+  --   StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+  -- end
+  if UI.frame then
+    UI.frame:Hide()
+  end
+end
+
+function Util.insertItemLinkIntoChat(itemId)
+  if not itemId or not C_Item or not C_Item.GetItemInfo then
+    return false
+  end
+  local _, itemLink = C_Item.GetItemInfo(itemId)
+  if not itemLink or itemLink == "" then
+    return false
+  end
+  local editBox = ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow()
+  if not editBox then
+    return false
+  end
+  if ChatEdit_InsertLink then
+    ChatEdit_InsertLink(itemLink, editBox)
+    return true
+  end
+  return false
+end
+
+function Util.bindItemDetailShiftLinks(itemId)
+  if UI.itemIconBtn and itemId then
+    Util.bindItemShiftClick(UI.itemIconBtn, function()
+      return UI.itemIconBtn.itemId
+    end)
+  end
+  if UI.detailLinkHitBtn and itemId then
+    UI.detailLinkHitBtn:Show()
+    Util.bindItemShiftClick(UI.detailLinkHitBtn, function()
+      return itemId
+    end)
+  elseif UI.detailLinkHitBtn then
+    UI.detailLinkHitBtn:Hide()
+  end
+end
+
+function Util.bindItemShiftClick(frame, getItemId)
+  if not frame or not getItemId then
+    return
+  end
+  frame:RegisterForClicks("LeftButtonUp")
+  frame:SetScript("OnClick", function(_, button)
+    if button == "LeftButton" and IsShiftKeyDown and IsShiftKeyDown() then
+      local itemId = getItemId()
+      if itemId then
+        Util.insertItemLinkIntoChat(itemId)
+      end
+    end
+  end)
 end
 
 function Util.createItemIcon(parent)
@@ -58,13 +164,20 @@ function Util.createItemIcon(parent)
   btn.border = border
 
   btn:SetScript("OnMouseDown", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+    if not self or not self.itemId then
+      return
+    end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetItemByID(self.itemId)
     GameTooltip:Show()
   end)
 
   btn:SetScript("OnMouseUp", function()
     GameTooltip:Hide()
+  end)
+
+  Util.bindItemShiftClick(btn, function()
+    return btn.itemId
   end)
 
   return btn
@@ -151,7 +264,80 @@ function Util.filterVisibleItemIds(itemIds)
   return out
 end
 
-function Util.gearSetItemIds(items)
+local SLOT_ALIAS_TO_KEY = {
+  head = "head",
+  neck = "neck",
+  shoulder = "shoulder",
+  shoulders = "shoulder",
+  back = "back",
+  cloak = "back",
+  chest = "chest",
+  wrist = "wrist",
+  wrists = "wrist",
+  hands = "hands",
+  hand = "hands",
+  waist = "waist",
+  belt = "waist",
+  legs = "legs",
+  leg = "legs",
+  feet = "feet",
+  foot = "feet",
+  finger = "finger",
+  ring = "finger",
+  trinket = "trinket",
+  mainhand = "mainhand",
+  weapon = "mainhand",
+  offhand = "offhand",
+  ranged = "ranged",
+  ammo = "ammo",
+}
+
+local EQUIP_LOC_TO_SLOT_KEY = {
+  INVTYPE_HEAD = "head",
+  INVTYPE_NECK = "neck",
+  INVTYPE_SHOULDER = "shoulder",
+  INVTYPE_CLOAK = "back",
+  INVTYPE_CHEST = "chest",
+  INVTYPE_ROBE = "chest",
+  INVTYPE_WRIST = "wrist",
+  INVTYPE_HAND = "hands",
+  INVTYPE_WAIST = "waist",
+  INVTYPE_LEGS = "legs",
+  INVTYPE_FEET = "feet",
+  INVTYPE_FINGER = "finger",
+  INVTYPE_TRINKET = "trinket",
+  INVTYPE_WEAPON = "mainhand",
+  INVTYPE_WEAPONMAINHAND = "mainhand",
+  INVTYPE_2HWEAPON = "mainhand",
+  INVTYPE_SHIELD = "offhand",
+  INVTYPE_WEAPONOFFHAND = "offhand",
+  INVTYPE_HOLDABLE = "offhand",
+  INVTYPE_RANGED = "ranged",
+  INVTYPE_RANGEDRIGHT = "ranged",
+  INVTYPE_AMMO = "ammo",
+  INVTYPE_THROWN = "ammo",
+}
+
+local SLOT_DISPLAY_ORDER = {
+  { key = "head",     label = "Head" },
+  { key = "neck",     label = "Neck" },
+  { key = "shoulder", label = "Shoulders" },
+  { key = "back",     label = "Back" },
+  { key = "chest",    label = "Chest" },
+  { key = "wrist",    label = "Wrist" },
+  { key = "hands",    label = "Hands" },
+  { key = "waist",    label = "Belt" },
+  { key = "legs",     label = "Legs" },
+  { key = "feet",     label = "Feet" },
+  { key = "finger",   label = "Ring",     numbered = true },
+  { key = "trinket",  label = "Trinket",  numbered = true },
+  { key = "mainhand", label = "Main Hand" },
+  { key = "offhand",  label = "Off Hand" },
+  { key = "ranged",   label = "Ranged" },
+  { key = "ammo",     label = "Ammo" },
+}
+
+local function collectGearSetItemIds(items)
   local itemIds = {}
   if type(items) ~= "table" then
     return itemIds
@@ -168,10 +354,102 @@ function Util.gearSetItemIds(items)
     end
   end
 
-  table.sort(itemIds, function(a, b)
-    return (tonumber(a) or 0) < (tonumber(b) or 0)
-  end)
   return Util.filterVisibleItemIds(itemIds)
+end
+
+function Util.resolveSlotKey(itemId)
+  if not itemId then
+    return "unknown"
+  end
+
+  local DB = TuskUpLoot.DB
+  if DB and DB.getItem then
+    local item = DB.getItem(itemId)
+    if item and item.slot then
+      local slot = string.lower(tostring(item.slot)):gsub("%s+", "")
+      if SLOT_ALIAS_TO_KEY[slot] then
+        return SLOT_ALIAS_TO_KEY[slot]
+      end
+    end
+  end
+
+  if C_Item and C_Item.GetItemInfo then
+    local equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    if equipLoc and EQUIP_LOC_TO_SLOT_KEY[equipLoc] then
+      return EQUIP_LOC_TO_SLOT_KEY[equipLoc]
+    end
+  end
+
+  return "unknown"
+end
+
+function Util.gearSetEntriesInDisplayOrder(items)
+  local itemIds = collectGearSetItemIds(items)
+  local buckets = {}
+
+  for _, itemId in ipairs(itemIds) do
+    local slotKey = Util.resolveSlotKey(itemId)
+    if not buckets[slotKey] then
+      buckets[slotKey] = {}
+    end
+    buckets[slotKey][#buckets[slotKey] + 1] = itemId
+  end
+
+  for _, ids in pairs(buckets) do
+    table.sort(ids, function(a, b)
+      return (tonumber(a) or 0) < (tonumber(b) or 0)
+    end)
+  end
+
+  local entries = {}
+  for _, slotDef in ipairs(SLOT_DISPLAY_ORDER) do
+    local ids = buckets[slotDef.key]
+    if ids then
+      for i, itemId in ipairs(ids) do
+        local label = slotDef.label
+        if slotDef.numbered then
+          label = string.format("%s %d", slotDef.label, i)
+        end
+        entries[#entries + 1] = {
+          slotLabel = label,
+          itemId = itemId,
+        }
+      end
+      buckets[slotDef.key] = nil
+    end
+  end
+
+  local unknown = buckets.unknown
+  if unknown then
+    for _, itemId in ipairs(unknown) do
+      entries[#entries + 1] = {
+        slotLabel = "Other",
+        itemId = itemId,
+      }
+    end
+  end
+
+  for slotKey, ids in pairs(buckets) do
+    if ids then
+      for _, itemId in ipairs(ids) do
+        entries[#entries + 1] = {
+          slotLabel = "Other",
+          itemId = itemId,
+        }
+      end
+    end
+  end
+
+  return entries
+end
+
+function Util.gearSetItemIds(items)
+  local entries = Util.gearSetEntriesInDisplayOrder(items)
+  local itemIds = {}
+  for _, entry in ipairs(entries) do
+    itemIds[#itemIds + 1] = entry.itemId
+  end
+  return itemIds
 end
 
 function Util.getOrCreateLootRow(container, rows, index, rowHeight)
@@ -213,6 +491,40 @@ function Util.clearFilter()
   ed:ClearFocus()
 end
 
+function Util.getOrCreateCharGearItemRow(container, rows, index, rowHeight)
+  local C = UI.Constants
+  local slotCol = C.CHAR_SLOT_COL_W
+  local acquiredW = C.CHAR_ACQUIRED_W
+  local itemLeft = slotCol + C.CHAR_ITEM_COL_GAP
+
+  local row = rows[index]
+  if not row then
+    row = CreateFrame("Frame", nil, container)
+    row:SetHeight(rowHeight)
+
+    row.slotFS = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.slotFS:SetWidth(slotCol)
+    row.slotFS:SetPoint("LEFT", 4, 0)
+    row.slotFS:SetJustifyH("RIGHT")
+
+    row.acquiredCheck = CreateFrame("CheckButton", nil, row, "ChatConfigCheckButtonTemplate")
+    row.acquiredCheck:SetSize(acquiredW, acquiredW)
+    row.acquiredCheck:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+
+    row.itemBtn = CreateFrame("Button", nil, row)
+    row.itemBtn:SetPoint("LEFT", row, "LEFT", itemLeft, 0)
+    row.itemBtn:SetPoint("RIGHT", row.acquiredCheck, "LEFT", -4, 0)
+    row.itemBtn:SetHeight(rowHeight)
+    row.itemText = row.itemBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.itemText:SetPoint("LEFT", 0, 0)
+    row.itemText:SetPoint("RIGHT", 0, 0)
+    row.itemText:SetJustifyH("LEFT")
+
+    rows[index] = row
+  end
+  return row
+end
+
 function Util.getOrCreateListButton(container, buttons, index, btnHeight)
   local btn = buttons[index]
   if not btn then
@@ -225,6 +537,18 @@ function Util.getOrCreateListButton(container, buttons, index, btnHeight)
     buttons[index] = btn
   end
   return btn
+end
+
+function Util.setCloseButtonPlacement(parentFrame)
+  if not parentFrame or not parentFrame:GetName() then
+    return
+  end
+  local frameName = parentFrame:GetName()
+  local closeBtn = _G[frameName .. "Close"]
+  if closeBtn then
+    closeBtn:ClearAllPoints()
+    closeBtn:SetPoint("TOPRIGHT", parentFrame, "TOPRIGHT", 2, 1)
+  end
 end
 
 function Util.getOrCreateRaidRow(container, rows, index)

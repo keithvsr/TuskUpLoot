@@ -35,6 +35,10 @@ local function updateTabVisibility()
   if UI.itemListScroll then
     UI.itemListScroll:SetShown(tab == "items")
   end
+  -- sync disabled
+  -- if UI.pushDataBtn then
+  --   UI.pushDataBtn:SetShown(tab == "characters")
+  -- end
 
   local showFilter = (tab == "characters" or tab == "items")
   if UI.filterBg then
@@ -72,8 +76,11 @@ local function updateTabVisibility()
     UI.itemIconBtn:SetShown(tab == "items" and UI.selectedItemId ~= nil)
   end
 
-  if UI.charDetailFS then
-    UI.charDetailFS:SetShown(tab == "characters")
+  if UI.charInfoHeader then
+    UI.charInfoHeader:SetShown(tab == "characters")
+  end
+  if UI.charSummaryFS then
+    UI.charSummaryFS:SetShown(tab == "characters")
   end
   if UI.charGearContainer then
     UI.charGearContainer:SetShown(tab == "characters")
@@ -95,6 +102,8 @@ local function updateTabVisibility()
   if tab ~= "items" and UI.detailBackBtn then
     UI.detailBackBtn:Hide()
   end
+
+  Util.layoutDetailScrollForTab(tab)
 
   updateTabButtonStyles()
   Util.updateFrameTitle()

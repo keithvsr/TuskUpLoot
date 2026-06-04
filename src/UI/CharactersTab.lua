@@ -4,6 +4,15 @@ local UI = TuskUpLoot.UI
 local Util = UI.Util
 local C = UI.Constants
 
+local function refreshAfterDataChange()
+  if UI.rebuildItemList then
+    UI.rebuildItemList()
+  end
+  if UI.activeTab == "raids" and UI.renderEncounterLootPanel then
+    UI.renderEncounterLootPanel()
+  end
+end
+
 local function clearCharGearContainer()
   local container = UI.charGearContainer
   if not container then
@@ -17,6 +26,20 @@ local function clearCharGearContainer()
       end
     end
   end
+  if container.headerRows then
+    for _, row in ipairs(container.headerRows) do
+      if row then
+        row:Hide()
+      end
+    end
+  end
+  if container.gearItemRows then
+    for _, row in ipairs(container.gearItemRows) do
+      if row then
+        row:Hide()
+      end
+    end
+  end
   if container.buttons then
     for _, b in ipairs(container.buttons) do
       if b then
@@ -27,8 +50,20 @@ local function clearCharGearContainer()
   container:SetHeight(1)
 end
 
+local function setCharacterSummary(text)
+  if UI.charSummaryFS then
+    UI.charSummaryFS:SetText(text or "")
+  end
+end
+
+local function setScrollContentHeight(contentHeight)
+  if UI.detailScrollChild then
+    UI.detailScrollChild:SetHeight(math.max(1, contentHeight + 8))
+  end
+end
+
 function UI.renderCharacterPanel()
-  if not UI.charDetailFS then
+  if not UI.charSummaryFS then
     return
   end
 
@@ -42,15 +77,21 @@ function UI.renderCharacterPanel()
   if UI.detailBackBtn then UI.detailBackBtn:Hide() end
   if UI.itemIconBtn then UI.itemIconBtn:Hide() end
 
-  UI.charDetailFS:Show()
+  if UI.charInfoHeader then
+    UI.charInfoHeader:Show()
+  end
+  UI.charSummaryFS:Show()
   if UI.charGearContainer then
     UI.charGearContainer:Show()
   end
 
+  Util.layoutDetailScrollForTab("characters")
+
   local DB = TuskUpLoot.DB
   if not DB then
-    UI.charDetailFS:SetText("TuskUpLoot: DB module not loaded.")
+    setCharacterSummary("TuskUpLoot: DB module not loaded.")
     clearCharGearContainer()
+    setScrollContentHeight(0)
     return
   end
 
@@ -60,8 +101,9 @@ function UI.renderCharacterPanel()
 
   local db = _G.TuskUpLootDB
   if not db or not db.characters then
-    UI.charDetailFS:SetText("No saved data yet.")
+    setCharacterSummary("No saved data yet.")
     clearCharGearContainer()
+    setScrollContentHeight(0)
     return
   end
 
@@ -69,33 +111,21 @@ function UI.renderCharacterPanel()
   local character = selectedKey and db.characters[selectedKey]
 
   if character then
-    local lines = {
-      string.format("Character: %s", character.name or selectedKey),
-    }
-    if character.level then
-      lines[#lines + 1] = string.format("Level: %s", tostring(character.level))
-    end
-    if character.race then
-      lines[#lines + 1] = string.format("Race: %s", character.race)
-    end
-    if character.class then
-      lines[#lines + 1] = string.format("Class: %s", character.class)
-    end
-
-    UI.charDetailFS:SetText(table.concat(lines, "\n"))
+    setCharacterSummary(Util.formatCharacterSummaryLine(character, selectedKey))
 
     local container = UI.charGearContainer
     if not container then
-      UI.detailScrollChild:SetHeight(math.max(1, UI.charDetailFS:GetStringHeight() + 8))
+      setScrollContentHeight(0)
       return
     end
 
     clearCharGearContainer()
     container.headers = container.headers or {}
-    container.buttons = container.buttons or {}
+    container.headerRows = container.headerRows or {}
+    container.gearItemRows = container.gearItemRows or {}
 
     local headerIndex = 0
-    local btnIndex = 0
+    local gearRowIndex = 0
     local y = 0
     local btnHeight = C.ROW_HEIGHT
     local sectionGap = 4
@@ -120,38 +150,88 @@ function UI.renderCharacterPanel()
         local gs = row.gearSet
         if gs then
           headerIndex = headerIndex + 1
-          local hdr = container.headers[headerIndex]
-          if not hdr then
-            hdr = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            container.headers[headerIndex] = hdr
+          local headerRow = container.headerRows[headerIndex]
+          if not headerRow then
+            headerRow = CreateFrame("Frame", nil, container)
+            headerRow:SetHeight(btnHeight)
+            headerRow.label = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            headerRow.label:SetPoint("LEFT", 4, 0)
+            headerRow.label:SetJustifyH("LEFT")
+            container.headerRows[headerIndex] = headerRow
           end
-          hdr:ClearAllPoints()
-          hdr:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -y)
-          hdr:SetWidth(container:GetWidth() - 8)
-          hdr:SetJustifyH("LEFT")
-          hdr:SetText(string.format("--- %s (phase %s) ---", gs.name or row.key, tostring(gs.phase or "?")))
-          hdr:Show()
-          y = y + (hdr:GetStringHeight() or 14) + sectionGap
+          if not headerRow.removeBtn then
+            headerRow.removeBtn = CreateFrame("Button", nil, headerRow, "UIPanelButtonTemplate")
+            headerRow.removeBtn:SetSize(54, 16)
+            headerRow.removeBtn:SetText("Remove")
+            local removeFont = headerRow.removeBtn.GetFontString and headerRow.removeBtn:GetFontString()
+            if removeFont and removeFont.SetFontObject then
+              removeFont:SetFontObject(ChatFontSmall)
+            end
+          end
+          if not headerRow.pushBtn then
+            headerRow.pushBtn = CreateFrame("Button", nil, headerRow, "UIPanelButtonTemplate")
+            headerRow.pushBtn:SetSize(44, 16)
+            headerRow.pushBtn:SetText("Push")
+            local pushFont = headerRow.pushBtn.GetFontString and headerRow.pushBtn:GetFontString()
+            if pushFont and pushFont.SetFontObject then
+              pushFont:SetFontObject(ChatFontSmall)
+            end
+          end
+          headerRow.removeBtn:SetPoint("RIGHT", headerRow, "RIGHT", -2, 0)
+          headerRow.pushBtn:SetPoint("RIGHT", headerRow.removeBtn, "LEFT", -2, 0)
+          headerRow.pushBtn:Hide() -- sync disabled
+          headerRow:ClearAllPoints()
+          headerRow:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
+          headerRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+          headerRow.label:SetPoint("RIGHT", headerRow.removeBtn, "LEFT", -4, 0)
+          headerRow.label:SetText(string.format("--- %s (phase %s) ---",
+            gs.name or row.key, tostring(gs.phase or "?")))
+          local gsKeyCapture = row.key
+          headerRow.removeBtn:SetScript("OnClick", function()
+            if DB.removeGearSet(selectedKey, gsKeyCapture) then
+              UI.renderCharacterPanel()
+              UI.rebuildCharacterList()
+              refreshAfterDataChange()
+            end
+          end)
+          headerRow:Show()
+          y = y + btnHeight + sectionGap
 
-          for _, id in ipairs(Util.gearSetItemIds(gs.items)) do
-            btnIndex = btnIndex + 1
-            local btn = Util.getOrCreateListButton(container, container.buttons, btnIndex, btnHeight)
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPLEFT", container, "TOPLEFT", 8, -y)
-            btn:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+          for _, entry in ipairs(Util.gearSetEntriesInDisplayOrder(gs.items)) do
+            local id = entry.itemId
+            gearRowIndex = gearRowIndex + 1
+            local gearRow = Util.getOrCreateCharGearItemRow(
+              container, container.gearItemRows, gearRowIndex, btnHeight)
+            gearRow:ClearAllPoints()
+            gearRow:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
+            gearRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+            gearRow:SetHeight(btnHeight)
+
+            gearRow.slotFS:SetText("|cff888888" .. entry.slotLabel .. "|r")
 
             local meta = db.items and db.items[id]
             local itemLine = Util.formatItemLine(meta or {
               id = id,
               name = TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName(id),
             })
-            btn.text:SetText(itemLine)
+            gearRow.itemText:SetText(itemLine)
+
+            local charMeta = meta and meta.characters and meta.characters[selectedKey]
+            local acquired = charMeta and charMeta.acquired or false
+            gearRow.acquiredCheck:SetChecked(acquired)
 
             local idCapture = id
-            btn:SetScript("OnClick", function()
+            local keyCapture = selectedKey
+            gearRow.itemBtn:SetScript("OnClick", function()
               UI.openItemDetail(idCapture, nil)
             end)
-            btn:Show()
+            gearRow.acquiredCheck:SetScript("OnClick", function(self)
+              DB.setItemAcquired(idCapture, keyCapture, self:GetChecked())
+              UI.renderCharacterPanel()
+              refreshAfterDataChange()
+            end)
+
+            gearRow:Show()
             y = y + btnHeight
           end
           y = y + sectionGap
@@ -160,8 +240,7 @@ function UI.renderCharacterPanel()
     end
 
     container:SetHeight(math.max(1, y))
-    local totalH = (UI.charDetailFS:GetStringHeight() or 0) + 4 + y + 8
-    UI.detailScrollChild:SetHeight(math.max(1, totalH))
+    setScrollContentHeight(y)
     return
   end
 
@@ -174,11 +253,35 @@ function UI.renderCharacterPanel()
   end
 
   if not anyChars then
-    UI.charDetailFS:SetText('No character lists imported.\nUse Import JSON at the bottom to paste a sixtyupgrades export.')
+    setCharacterSummary("No character lists imported.")
   else
-    UI.charDetailFS:SetText("Select a character from the list to view their gear sets.")
+    setCharacterSummary("Select a character from the list.")
   end
-  UI.detailScrollChild:SetHeight(math.max(1, UI.charDetailFS:GetStringHeight() + 8))
+
+  local container = UI.charGearContainer
+  if container then
+    container.headers = container.headers or {}
+    local hdr = container.headers[1]
+    if not hdr then
+      hdr = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      container.headers[1] = hdr
+    end
+    hdr:ClearAllPoints()
+    hdr:SetPoint("TOPLEFT", container, "TOPLEFT", 4, 0)
+    hdr:SetWidth(container:GetWidth() - 8)
+    hdr:SetJustifyH("LEFT")
+    if not anyChars then
+      hdr:SetText('Use Import JSON at the bottom to paste a sixtyupgrades export.')
+    else
+      hdr:SetText("Gear sets for the selected character appear here.")
+    end
+    hdr:Show()
+    local h = hdr:GetStringHeight() or 14
+    container:SetHeight(math.max(1, h))
+    setScrollContentHeight(h)
+  else
+    setScrollContentHeight(0)
+  end
 end
 
 function UI.renderSelectedCharacter()
@@ -213,6 +316,7 @@ function UI.rebuildCharacterList()
     local row = rows[j]
     local key = row.key
     local label = row.name or key
+    local class = row.class or "PRIEST"
     local haystack = string.lower(string.format("%s %s", label, row.class or ""))
     if needle == "" or string.find(haystack, needle, 1, true) then
       i = i + 1
@@ -221,12 +325,20 @@ function UI.rebuildCharacterList()
       btn:SetPoint("TOPLEFT", container, "TOPLEFT", 0, y)
       btn:SetPoint("RIGHT", container, "RIGHT", 0, 0)
 
+
+      local classColor = C_ClassColor.GetClassColor(class)
+      local isSelected = (UI.selectedCharacterKey == key)
       btn:SetScript("OnClick", function()
-        UI.setSelectedCharacter(key)
+        if not isSelected then
+          UI.setSelectedCharacter(key)
+        else
+          UI.setSelectedCharacter(nil)
+        end
       end)
 
-      local isSelected = (UI.selectedCharacterKey == key)
-      btn.text:SetText((isSelected and "|cffffff00" or "") .. label .. (isSelected and "|r" or ""))
+      local prefix = (isSelected and "|c0cffd200» |r|c" or "  |c") .. classColor:GenerateHexColor()
+      local suffix = "|r" .. (isSelected and "|c0cffd200  «|r" or "")
+      btn.text:SetText(prefix .. label .. suffix)
       btn:Show()
 
       y = y - btnHeight

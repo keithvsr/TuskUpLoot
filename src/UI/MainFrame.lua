@@ -120,9 +120,21 @@ function UI.ensureFrame()
 
   local scrollTop = -(C.TAB_HEIGHT + 50)
 
+  local pushDataBtn = CreateFrame("Button", nil, listBg, "UIPanelButtonTemplate")
+  pushDataBtn:SetSize(C.RAIL_WIDTH - 8, 22)
+  pushDataBtn:SetPoint("BOTTOMLEFT", listBg, "BOTTOMLEFT", 0, 4)
+  pushDataBtn:SetText("Push data")
+  pushDataBtn:Hide() -- sync disabled
+  -- pushDataBtn:SetScript("OnClick", function()
+  --   if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushFullPicker then
+  --     TuskUpLoot.Sync.openPushFullPicker()
+  --   end
+  -- end)
+  UI.pushDataBtn = pushDataBtn
+
   local charListScroll = CreateFrame("ScrollFrame", nil, listBg, "UIPanelScrollFrameTemplate")
   charListScroll:SetPoint("TOPLEFT", listBg, "TOPLEFT", 0, scrollTop)
-  charListScroll:SetPoint("BOTTOMRIGHT", listBg, "BOTTOMRIGHT", -26, 0)
+  charListScroll:SetPoint("BOTTOMRIGHT", listBg, "BOTTOMRIGHT", -26, 28)
   local charListContainer = CreateFrame("Frame", nil, charListScroll)
   charListContainer:SetWidth(C.RAIL_WIDTH - 8)
   charListContainer:SetHeight(1)
@@ -159,6 +171,22 @@ function UI.ensureFrame()
   detailSectionLabel:SetText("Gear sets")
   UI.detailSectionLabel = detailSectionLabel
 
+  local charInfoHeader = CreateFrame("Frame", nil, f)
+  charInfoHeader:SetHeight(20)
+  charInfoHeader:SetPoint("TOPLEFT", f, "TOPLEFT", C.CONTENT_X, -58)
+  charInfoHeader:SetPoint("TOPRIGHT", f, "TOPRIGHT", -C.MARGIN_R, -58)
+  charInfoHeader:Hide()
+  UI.charInfoHeader = charInfoHeader
+
+  local charSummaryFS = charInfoHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  charSummaryFS:SetPoint("LEFT", charInfoHeader, "LEFT", 0, 0)
+  charSummaryFS:SetPoint("RIGHT", charInfoHeader, "RIGHT", 0, 0)
+  charSummaryFS:SetJustifyH("LEFT")
+  charSummaryFS:SetJustifyV("MIDDLE")
+  charSummaryFS:SetWordWrap(false)
+  UI.charSummaryFS = charSummaryFS
+  UI.charDetailFS = charSummaryFS
+
   local detailHeader = CreateFrame("Frame", nil, f)
   detailHeader:SetHeight(36)
   detailHeader:SetPoint("TOPLEFT", f, "TOPLEFT", C.CONTENT_X, -64)
@@ -173,11 +201,18 @@ function UI.ensureFrame()
 
   local detailLinkFS = detailHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   detailLinkFS:SetPoint("LEFT", itemIconBtn, "RIGHT", 10, 0)
-  detailLinkFS:SetPoint("RIGHT", detailHeader, "RIGHT", -4, 0)
+  detailLinkFS:SetPoint("RIGHT", detailHeader, "RIGHT", -60, 0)
   detailLinkFS:SetJustifyH("LEFT")
   detailLinkFS:SetJustifyV("MIDDLE")
   detailLinkFS:SetWordWrap(true)
   UI.detailLinkFS = detailLinkFS
+
+  local detailLinkHitBtn = CreateFrame("Button", nil, detailHeader)
+  detailLinkHitBtn:SetPoint("TOPLEFT", detailLinkFS, "TOPLEFT", 0, 0)
+  detailLinkHitBtn:SetPoint("BOTTOMRIGHT", detailLinkFS, "BOTTOMRIGHT", 0, 0)
+  detailLinkHitBtn:SetFrameLevel(detailHeader:GetFrameLevel() + 2)
+  detailLinkHitBtn:Hide()
+  UI.detailLinkHitBtn = detailLinkHitBtn
 
   local detailScroll = CreateFrame("ScrollFrame", "ItemDetailScroll", f, "ScrollFrameTemplate")
   detailScroll:SetPoint("TOPLEFT", detailHeader, "BOTTOMLEFT", 0, -8)
@@ -226,15 +261,6 @@ function UI.ensureFrame()
   hasText:SetWordWrap(true)
   UI.hasText = hasText
 
-  local charDetailFS = detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  charDetailFS:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 4, 0)
-  charDetailFS:SetWidth(detailScrollChild:GetWidth() - 8)
-  charDetailFS:SetJustifyH("LEFT")
-  charDetailFS:SetJustifyV("TOP")
-  charDetailFS:SetWordWrap(true)
-  charDetailFS:Hide()
-  UI.charDetailFS = charDetailFS
-
   local toggleImportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
   toggleImportBtn:SetSize(140, 22)
   toggleImportBtn:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", C.CONTENT_X, C.MARGIN_L)
@@ -257,11 +283,12 @@ function UI.ensureFrame()
   legacyText:Hide()
   UI.text = legacyText
 
-  local close = _G["TuskUpLootMainFrameCloseButton"] or _G["TuskUpLootMainFrameClose"]
-  if close then
-    close:ClearAllPoints()
-    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 1)
-  end
+  Util.setCloseButtonPlacement(f)
+  -- local close = _G["TuskUpLootMainFrameCloseButton"] or _G["TuskUpLootMainFrameClose"]
+  -- if close then
+  --   close:ClearAllPoints()
+  --   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 1)
+  -- end
 
   ---@diagnostic disable-next-line: undefined-global
   table.insert(UISpecialFrames, "TuskUpLootMainFrame")
@@ -274,7 +301,7 @@ function UI.ensureFrame()
   UI.encounterLootContainer = encounterLootContainer
 
   local charGearContainer = CreateFrame("Frame", nil, detailScrollChild)
-  charGearContainer:SetPoint("TOPLEFT", charDetailFS, "BOTTOMLEFT", 0, -4)
+  charGearContainer:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 0, 0)
   charGearContainer:SetWidth(detailScrollChild:GetWidth())
   charGearContainer:SetHeight(1)
   charGearContainer:Hide()
@@ -301,13 +328,30 @@ function UI.ensureFrame()
   end)
   UI.detailBackBtn = backBtn
 
+  f:SetScript("OnHide", function()
+    -- sync disabled
+    -- if UI.syncPickerFrame then
+    --   UI.syncPickerFrame:Hide()
+    -- end
+    if UI.importFrame then
+      UI.importFrame:Hide()
+    end
+    -- if StaticPopup_Hide then
+    --   StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+    -- end
+  end)
+
   UI.frame = f
   TuskUpLoot.frame = f
 
   local state = Util.getRaidState()
   if state.InstanceId then
-    UI.focusInstanceId = state.InstanceId
-    UI.expandedInstances[state.InstanceId] = true
+    if UI.expandOnlyInstance then
+      UI.expandOnlyInstance(state.InstanceId)
+    else
+      UI.focusInstanceId = state.InstanceId
+      UI.expandedInstances[state.InstanceId] = true
+    end
     UI.activeTab = "raids"
   else
     UI.activeTab = "characters"
@@ -326,7 +370,7 @@ function UI.toggle()
 
   UI.ensureFrame()
   if UI.frame:IsShown() then
-    UI.frame:Hide()
+    UI.dismissAllFrames()
   else
     UI.frame:Show()
   end

@@ -128,9 +128,9 @@ function UI.ensureImportFrame()
       return
     end
 
-    local payload, err
+    local payload, err, isAnUpdate
     if TuskUpLoot.Importer then
-      payload, err = TuskUpLoot.Importer.import(txt)
+      payload, err, _, isAnUpdate = TuskUpLoot.Importer.import(txt)
     end
     if not payload then
       Util.safeChatPrint("Import failed: " .. tostring(err or "unknown"))
@@ -139,7 +139,11 @@ function UI.ensureImportFrame()
 
     local name = payload.character and payload.character.name
     local gearSetName = payload.name or ""
-    Util.safeChatPrint(string.format("Imported %s gear set %s", tostring(name or "character"), tostring(gearSetName)))
+    if not isAnUpdate then
+      Util.safeChatPrint(string.format("Imported %s gear set %s", tostring(name or "character"), tostring(gearSetName)))
+    else
+      Util.safeChatPrint(string.format("Updated %s gear set %s", tostring(name or "character"), tostring(gearSetName)))
+    end
     if editBox then
       editBox:SetText("")
     end
@@ -155,11 +159,12 @@ function UI.ensureImportFrame()
     hideImportFrameShowMain()
   end)
 
-  local closeBtn = _G["TuskUpLootImportFrameCloseButton"] or _G["TuskUpLootImportFrameClose"]
-  if closeBtn then
-    closeBtn:ClearAllPoints()
-    closeBtn:SetPoint("TOPRIGHT", imp, "TOPRIGHT", 2, 1)
-  end
+  Util.setCloseButtonPlacement(imp)
+  -- local closeBtn = _G["TuskUpLootImportFrameCloseButton"] or _G["TuskUpLootImportFrameClose"]
+  -- if closeBtn then
+  --   closeBtn:ClearAllPoints()
+  --   closeBtn:SetPoint("TOPRIGHT", imp, "TOPRIGHT", 2, 1)
+  -- end
 
   UI.importFrame = imp
 end

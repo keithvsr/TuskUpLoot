@@ -17,6 +17,14 @@ function UI.clearNeedsList()
     end
   end
 
+  if UI.tierRewardRowFrames then
+    for _, fr in ipairs(UI.tierRewardRowFrames) do
+      if fr then
+        fr:Hide()
+      end
+    end
+  end
+
   UI.needsListContainer:SetHeight(1)
 end
 
@@ -94,8 +102,9 @@ local function renderNeedsList(needsRows, selectedItemId)
     fr.gearFS:SetWidth(leftW)
 
     if fr.markBtn then
+      local markItemId = row.markItemId or selectedItemId
       fr.markBtn:SetScript("OnClick", function()
-        TuskUpLoot.DB.markItemAcquired(selectedItemId, row.characterKey)
+        TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
         UI.renderSelectedItem()
       end)
     end
@@ -118,6 +127,137 @@ local function renderNeedsList(needsRows, selectedItemId)
   container:SetHeight(math.max(1, y))
 end
 
+local function renderTierTokenNeedsList(rewardGroups)
+  local container = UI.needsListContainer
+  if not container then
+    return
+  end
+
+  local frames = UI.tierRewardRowFrames or {}
+  UI.tierRewardRowFrames = frames
+
+  local MARK_BTN_W = 78
+  local MARK_BTN_H = 18
+  local GAP_X = 4
+  local GAP_Y = 4
+  local INDENT = 12
+  local leftW = math.max(10, container:GetWidth() - MARK_BTN_W - GAP_X - INDENT)
+
+  clearNeedsList()
+
+  local frameIdx = 0
+  local y = 0
+
+  for _, group in ipairs(rewardGroups or {}) do
+    frameIdx = frameIdx + 1
+    local headerFr = frames[frameIdx]
+    if not headerFr then
+      headerFr = CreateFrame("Frame", nil, container)
+      headerFr.headerFS = headerFr:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+      headerFr.headerFS:SetJustifyH("LEFT")
+      headerFr.headerFS:SetPoint("TOPLEFT", headerFr, "TOPLEFT", 0, 0)
+      frames[frameIdx] = headerFr
+    end
+
+    headerFr:ClearAllPoints()
+    headerFr:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
+    headerFr:SetWidth(container:GetWidth())
+    headerFr.headerFS:SetWidth(container:GetWidth() - 4)
+
+    local itemLabel = Util.formatItemLine({
+      id = group.itemId,
+      name = group.name,
+    })
+    local needCount = #(group.needs or {})
+    if needCount > 0 then
+      itemLabel = itemLabel .. string.format(" |cff00ff00(%d need)|r", needCount)
+    end
+    headerFr.headerFS:SetText(itemLabel)
+    local headerH = headerFr.headerFS:GetStringHeight() or C.ROW_HEIGHT
+    headerFr:SetHeight(headerH)
+    headerFr:Show()
+    y = y + headerH + GAP_Y
+
+    for _, row in ipairs(group.needs or {}) do
+      frameIdx = frameIdx + 1
+      local fr = frames[frameIdx]
+      if not fr then
+        fr = CreateFrame("Frame", nil, container)
+        fr:SetWidth(container:GetWidth())
+
+        local whoFS = fr:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        whoFS:SetJustifyH("LEFT")
+        whoFS:SetWidth(leftW)
+        whoFS:SetPoint("TOPLEFT", fr, "TOPLEFT", INDENT, 0)
+        fr.whoFS = whoFS
+
+        local gearFS = fr:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        gearFS:SetJustifyH("LEFT")
+        gearFS:SetWordWrap(false)
+        gearFS:SetWidth(leftW)
+        gearFS:SetPoint("TOPLEFT", whoFS, "BOTTOMLEFT", 0, -2)
+        fr.gearFS = gearFS
+
+        local markBtn = CreateFrame("Button", nil, fr, "UIPanelButtonTemplate")
+        markBtn:SetSize(MARK_BTN_W, MARK_BTN_H)
+        markBtn:SetText("Looted")
+        markBtn:SetPoint("TOPRIGHT", fr, "TOPRIGHT", 2, 0)
+        local fontString = markBtn.GetFontString and markBtn:GetFontString()
+        if fontString and fontString.SetFontObject then
+          fontString:SetFontObject(ChatFontSmall)
+        end
+        fr.markBtn = markBtn
+
+        frames[frameIdx] = fr
+      end
+
+      fr:ClearAllPoints()
+      fr:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
+      fr:SetWidth(container:GetWidth())
+
+      local who = row.who or row.characterKey or "Unknown"
+      fr.whoFS:SetText(who)
+      fr.whoFS:SetWidth(leftW)
+
+      local gearLines = {}
+      for _, gs in ipairs(row.gearSets or {}) do
+        local phase = gs.phase ~= nil and string.format(" (Phase %s)", tostring(gs.phase)) or ""
+        gearLines[#gearLines + 1] = string.format("    • %s%s", gs.name or gs.key, phase)
+      end
+      if #gearLines == 0 then
+        gearLines[1] = "    • (no gear sets)"
+      end
+      fr.gearFS:SetText(table.concat(gearLines, "\n"))
+      fr.gearFS:SetWidth(leftW)
+
+      if fr.markBtn then
+        local markItemId = row.markItemId or group.itemId
+        fr.markBtn:SetScript("OnClick", function()
+          TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
+          UI.renderSelectedItem()
+        end)
+      end
+
+      local whoH = fr.whoFS:GetStringHeight() or 0
+      local gearH = fr.gearFS:GetStringHeight() or 0
+      local frH = math.max(MARK_BTN_H, whoH + 2 + gearH)
+      fr:SetHeight(frH)
+      fr:Show()
+      y = y + frH + GAP_Y
+    end
+
+    y = y + GAP_Y
+  end
+
+  for j = frameIdx + 1, #frames do
+    if frames[j] then
+      frames[j]:Hide()
+    end
+  end
+
+  container:SetHeight(math.max(1, y))
+end
+
 function UI.renderSelectedItem()
   if not UI.needsTitle or not UI.needsListContainer or not UI.hasTitle or not UI.hasText or not UI.detailLinkFS or not UI.detailScrollChild then
     return
@@ -130,8 +270,11 @@ function UI.renderSelectedItem()
   if UI.encounterLootContainer then
     UI.encounterLootContainer:Hide()
   end
-  if UI.charDetailFS then
-    UI.charDetailFS:Hide()
+  if UI.charInfoHeader then
+    UI.charInfoHeader:Hide()
+  end
+  if UI.charSummaryFS then
+    UI.charSummaryFS:Hide()
   end
   if UI.charGearContainer then
     UI.charGearContainer:Hide()
@@ -146,12 +289,25 @@ function UI.renderSelectedItem()
   end
 
   local DB = TuskUpLoot.DB
+  local Data = TuskUpLoot.Data
   local selectedItemId = UI.selectedItemId
   local item = selectedItemId and DB and DB.getItem(selectedItemId)
+  local rollup = (selectedItemId and Data and Data.getAggregatedItemRollup)
+    and Data.getAggregatedItemRollup(selectedItemId)
+  local rewardGroups = (selectedItemId and Data and Data.getTierTokenNeedsByReward)
+    and Data.getTierTokenNeedsByReward(selectedItemId)
+  local hasRewardNeeds = rewardGroups and #rewardGroups > 0
+  local hasRollup = (rollup and #rollup > 0) or hasRewardNeeds
 
   if not selectedItemId then
     if UI.itemIconBtn then
       UI.itemIconBtn:Hide()
+    end
+    if UI.detailLinkHitBtn then
+      UI.detailLinkHitBtn:Hide()
+    end
+    if UI.detailLinkHitBtn then
+      UI.detailLinkHitBtn:Hide()
     end
     if UI.detailBackBtn and UI.returnContext then
       UI.detailBackBtn:Show()
@@ -171,14 +327,15 @@ function UI.renderSelectedItem()
     return
   end
 
-  if not item then
+  if not item and not hasRollup then
     if UI.itemIconBtn then
       Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
       UI.itemIconBtn:Show()
+      Util.bindItemDetailShiftLinks(selectedItemId)
     end
     local _, itemLink = C_Item.GetItemInfo(selectedItemId)
-    if not itemLink and TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
-      local name = TuskUpLoot.Data.getItemDisplayName(selectedItemId)
+    if not itemLink and Data and Data.getItemDisplayName then
+      local name = Data.getItemDisplayName(selectedItemId)
       if name then
         itemLink = "|cffffffff[" .. name .. "]|r"
       end
@@ -210,18 +367,26 @@ function UI.renderSelectedItem()
     UI.detailLinkFS:ClearAllPoints()
     UI.detailLinkFS:SetPoint("LEFT", UI.itemIconBtn, "RIGHT", 10, 0)
     UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -60, 0)
+    Util.bindItemDetailShiftLinks(selectedItemId)
   end
 
   local _, itemLink = C_Item.GetItemInfo(selectedItemId)
 
-  if not itemLink and item.name then
+  if not itemLink and item and item.name then
     itemLink = "|cffffffff[" .. item.name .. "]|r"
+  elseif not itemLink and Data and Data.getItemDisplayName then
+    local name = Data.getItemDisplayName(selectedItemId)
+    if name then
+      itemLink = "|cffffffff[" .. name .. "]|r"
+    end
   elseif not itemLink then
     itemLink = "|cffffffff[Item " .. tostring(selectedItemId) .. "]|r"
   end
   UI.detailLinkFS:SetText(itemLink)
 
-  local rollup = DB.getItemRollup(selectedItemId)
+  if not hasRollup then
+    rollup = nil
+  end
   if not rollup or #rollup == 0 then
     UI.needsTitle:SetText("No characters linked to this item in saved data.")
     clearNeedsList()
@@ -247,18 +412,27 @@ function UI.renderSelectedItem()
           who = who,
           characterKey = row.characterKey,
           gearSets = row.gearSets or {},
+          markItemId = row.markItemId,
         }
       end
     end
 
-    local needsShown = (#needs > 0)
+    local needsShown = hasRewardNeeds or (#needs > 0)
     local hasShown = (#has > 0)
 
     if needsShown then
-      UI.needsTitle:SetText("Needs Item:")
+      if hasRewardNeeds then
+        UI.needsTitle:SetText("Rewards:")
+      else
+        UI.needsTitle:SetText("Needs Item:")
+      end
       UI.needsTitle:Show()
       UI.needsListContainer:Show()
-      renderNeedsList(needs, selectedItemId)
+      if hasRewardNeeds then
+        renderTierTokenNeedsList(rewardGroups)
+      else
+        renderNeedsList(needs, selectedItemId)
+      end
 
       UI.hasTitle:ClearAllPoints()
       UI.hasTitle:SetPoint("TOPLEFT", UI.needsListContainer, "BOTTOMLEFT", -C.TEXT_INSET, -8)
