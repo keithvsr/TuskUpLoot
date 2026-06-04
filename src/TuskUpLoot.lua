@@ -283,6 +283,7 @@ local function recordEncounterClear(encounterId)
 end
 
 local function handleCombatLog()
+  ---@diagnostic disable-next-line: undefined-global
   local _, subevent, _, _, _, _, _, destGuid = CombatLogGetCurrentEventInfo()
   if subevent == "UNIT_DIED" and destGuid then
     if tryCaptureRunInstanceFromCreatureGuid(destGuid) then
