@@ -288,6 +288,23 @@ function UI.renderSelectedCharacter()
   UI.renderCharacterPanel()
 end
 
+function UI.setCharListSortBy(sortBy)
+  if sortBy ~= "name" and sortBy ~= "class" then
+    return
+  end
+  if UI.charListSortBy == sortBy then
+    if sortBy == "name" then
+      UI.charListSortNameDescending = not UI.charListSortNameDescending
+    else
+      UI.charListSortClassDescending = not UI.charListSortClassDescending
+    end
+  else
+    UI.charListSortBy = sortBy
+  end
+  UI.updateCharSortButtonStyles()
+  UI.rebuildCharacterList()
+end
+
 function UI.rebuildCharacterList()
   if not UI.charListContainer then
     return
@@ -307,6 +324,7 @@ function UI.rebuildCharacterList()
   container.buttons = container.buttons or {}
 
   local rows = DB.characterNamesAndClasses() or {}
+  Util.sortCharacterRows(rows, UI.charListSortBy or "name", UI.getCharListSortDescending())
   local needle = Util.filterNeedle()
   local y = -6
   local btnHeight = 18

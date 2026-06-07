@@ -491,6 +491,35 @@ function Util.clearFilter()
   ed:ClearFocus()
 end
 
+local function characterRowName(row)
+  return string.lower(row.name or row.key or "")
+end
+
+local function characterRowClass(row)
+  return string.lower(row.class or "")
+end
+
+function Util.sortCharacterRows(rows, sortBy, descending)
+  if type(rows) ~= "table" then
+    return
+  end
+  sortBy = sortBy or "name"
+  table.sort(rows, function(a, b)
+    if descending then
+      a, b = b, a
+    end
+    if sortBy == "class" then
+      local aClass = characterRowClass(a)
+      local bClass = characterRowClass(b)
+      if aClass ~= bClass then
+        return aClass < bClass
+      end
+      return characterRowName(a) < characterRowName(b)
+    end
+    return characterRowName(a) < characterRowName(b)
+  end)
+end
+
 function Util.getOrCreateCharGearItemRow(container, rows, index, rowHeight)
   local C = UI.Constants
   local slotCol = C.CHAR_SLOT_COL_W

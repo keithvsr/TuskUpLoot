@@ -3,6 +3,41 @@
 local UI = TuskUpLoot.UI
 local Util = UI.Util
 
+function UI.getCharListSortDescending()
+  if (UI.charListSortBy or "name") == "class" then
+    return UI.charListSortClassDescending or false
+  end
+  return UI.charListSortNameDescending or false
+end
+
+local function styleCharSortButton(btn, sortKey, label)
+  if not btn or not btn.text then
+    return
+  end
+  local sortBy = UI.charListSortBy or "name"
+  local active = (sortBy == sortKey)
+  local descending = (sortKey == "class")
+    and (UI.charListSortClassDescending or false)
+    or (UI.charListSortNameDescending or false)
+
+  if btn.bg then
+    btn.bg:SetShown(active)
+  end
+  if btn.descIndicator then
+    btn.descIndicator:SetShown(active and descending)
+  end
+  if active then
+    btn.text:SetText("|cffffff00" .. label .. "|r")
+  else
+    btn.text:SetText("|cff888888" .. label .. "|r")
+  end
+end
+
+function UI.updateCharSortButtonStyles()
+  styleCharSortButton(UI.charSortNameBtn, "name", "Name")
+  styleCharSortButton(UI.charSortClassBtn, "class", "Class")
+end
+
 local function updateTabButtonStyles()
   local active = UI.activeTab
   local tabs = {
@@ -14,6 +49,9 @@ local function updateTabButtonStyles()
     if tab.btn and tab.btn.text then
       local label = tab.btn.baseLabel or tab.btn.text:GetText() or ""
       tab.btn.baseLabel = label:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+      if tab.btn.bg then
+        tab.btn.bg:SetShown(tab.key == active)
+      end
       if tab.key == active then
         tab.btn.text:SetText("|cffffff00" .. tab.btn.baseLabel .. "|r")
       else
@@ -46,6 +84,9 @@ local function updateTabVisibility()
   end
   if UI.filterEdit then
     UI.filterEdit:SetShown(showFilter)
+  end
+  if UI.charSortBar then
+    UI.charSortBar:SetShown(tab == "characters")
   end
 
   local titles = {
@@ -106,6 +147,7 @@ local function updateTabVisibility()
   Util.layoutDetailScrollForTab(tab)
 
   updateTabButtonStyles()
+  UI.updateCharSortButtonStyles()
   Util.updateFrameTitle()
 end
 

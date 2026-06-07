@@ -60,6 +60,12 @@ function UI.ensureFrame()
     local btn = CreateFrame("Button", "TuskUpLootTabButton" .. tabKey, parent)
     btn:SetSize(62, C.TAB_HEIGHT)
     btn:SetPoint("TOPLEFT", parent, "TOPLEFT", xOffset, 0)
+
+    btn.bg = btn:CreateTexture(nil, "BACKGROUND")
+    btn.bg:SetAllPoints()
+    btn.bg:SetColorTexture(0.15, 0.15, 0.15, 0.6)
+    btn.bg:Hide()
+
     btn.text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     btn.text:SetPoint("CENTER")
     btn.text:SetText(label)
@@ -118,7 +124,54 @@ function UI.ensureFrame()
   end)
   UI.filterEdit = filterEdit
 
-  local scrollTop = -(C.TAB_HEIGHT + 50)
+  local charSortBar = CreateFrame("Frame", nil, listBg)
+  charSortBar:SetPoint("TOPLEFT", listBg, "TOPLEFT", 0, -(C.TAB_HEIGHT + 52))
+  charSortBar:SetPoint("TOPRIGHT", listBg, "TOPRIGHT", 0, -(C.TAB_HEIGHT + 52))
+  charSortBar:SetHeight(20)
+  charSortBar:Hide()
+  UI.charSortBar = charSortBar
+
+  local function createCharSortButton(parent, label, sortKey, xOffset)
+    local btn = CreateFrame("Button", nil, parent)
+    btn:SetSize(52, 18)
+    btn:SetPoint("LEFT", parent, "LEFT", xOffset, 0)
+    btn.sortKey = sortKey
+    btn.baseLabel = label
+
+    btn.bg = btn:CreateTexture(nil, "BACKGROUND")
+    btn.bg:SetAllPoints()
+    btn.bg:SetColorTexture(0.15, 0.15, 0.15, 0.6)
+    btn.bg:Hide()
+
+    btn.descIndicator = btn:CreateTexture(nil, "OVERLAY")
+    btn.descIndicator:SetColorTexture(1, 0.53, 0, 1)
+    btn.descIndicator:SetHeight(2)
+    btn.descIndicator:SetPoint("TOPLEFT", btn, "TOPLEFT", 6, -2)
+    btn.descIndicator:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -6, -2)
+    btn.descIndicator:Hide()
+
+    btn.text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    btn.text:SetPoint("CENTER")
+    btn.text:SetText(label)
+
+    btn:SetScript("OnClick", function()
+      UI.setCharListSortBy(sortKey)
+    end)
+    btn:SetScript("OnEnter", function()
+      if (UI.charListSortBy or "name") ~= sortKey then
+        btn.text:SetText("|cffbbbbbb" .. label .. "|r")
+      end
+    end)
+    btn:SetScript("OnLeave", function()
+      UI.updateCharSortButtonStyles()
+    end)
+    return btn
+  end
+
+  UI.charSortNameBtn = createCharSortButton(charSortBar, "Name", "name", 0)
+  UI.charSortClassBtn = createCharSortButton(charSortBar, "Class", "class", 54)
+
+  local scrollTop = -(C.TAB_HEIGHT + 72)
 
   local pushDataBtn = CreateFrame("Button", nil, listBg, "UIPanelButtonTemplate")
   pushDataBtn:SetSize(C.RAIL_WIDTH - 8, 22)

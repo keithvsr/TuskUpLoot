@@ -354,10 +354,6 @@ function DB.characterNamesAndClasses()
       class = character.class,
     }
   end
-  -- sort by name alphabetically
-  table.sort(namesAndClasses, function(a, b)
-    return a.name < b.name
-  end)
   return namesAndClasses
 end
 
