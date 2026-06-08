@@ -4,6 +4,9 @@ local UI = TuskUpLoot.UI
 local Util = UI.Util
 
 function UI.getCharListSortDescending()
+  if (UI.charListSortBy or "name") == "manual" then
+    return false
+  end
   if (UI.charListSortBy or "name") == "class" then
     return UI.charListSortClassDescending or false
   end
@@ -16,15 +19,18 @@ local function styleCharSortButton(btn, sortKey, label)
   end
   local sortBy = UI.charListSortBy or "name"
   local active = (sortBy == sortKey)
-  local descending = (sortKey == "class")
-    and (UI.charListSortClassDescending or false)
-    or (UI.charListSortNameDescending or false)
+  local descending = false
+  if sortKey ~= "manual" then
+    descending = (sortKey == "class")
+      and (UI.charListSortClassDescending or false)
+      or (UI.charListSortNameDescending or false)
+  end
 
   if btn.bg then
     btn.bg:SetShown(active)
   end
   if btn.descIndicator then
-    btn.descIndicator:SetShown(active and descending)
+    btn.descIndicator:SetShown(active and descending and sortKey ~= "manual")
   end
   if active then
     btn.text:SetText("|cffffff00" .. label .. "|r")
@@ -36,6 +42,18 @@ end
 function UI.updateCharSortButtonStyles()
   styleCharSortButton(UI.charSortNameBtn, "name", "Name")
   styleCharSortButton(UI.charSortClassBtn, "class", "Class")
+  styleCharSortButton(UI.charSortManualBtn, "manual", "Manual")
+end
+
+function UI.updateCharManualOrderControls()
+  local showManualReset = (UI.activeTab == "characters")
+    and ((UI.charListSortBy or "name") == "manual")
+  if UI.charManualResetBtn then
+    UI.charManualResetBtn:SetShown(showManualReset)
+  end
+  if UI.charListScroll and UI.charListScroll:GetParent() then
+    UI.charListScroll:SetPoint("BOTTOMRIGHT", UI.charListScroll:GetParent(), "BOTTOMRIGHT", -26, showManualReset and 28 or 0)
+  end
 end
 
 local function updateTabButtonStyles()
@@ -88,6 +106,8 @@ local function updateTabVisibility()
   if UI.charSortBar then
     UI.charSortBar:SetShown(tab == "characters")
   end
+
+  UI.updateCharManualOrderControls()
 
   local titles = {
     characters = "Characters",

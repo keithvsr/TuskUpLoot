@@ -4,6 +4,114 @@ local UI = TuskUpLoot.UI
 local Util = UI.Util
 local C = UI.Constants
 
+local CHAR_DRAG_THRESHOLD = 5
+
+local function clearCharListDragState(container)
+  if not container then
+    return
+  end
+  if container.charListDragBtn then
+    container.charListDragBtn:SetScript("OnUpdate", nil)
+    container.charListDragBtn = nil
+  end
+  Util.clearCharListDragVisuals(container)
+end
+
+local function updateCharListDragVisuals(container, dragBtn, dropIndex)
+  if not dragBtn then
+    Util.clearCharListDragVisuals(container)
+    return
+  end
+  Util.setCharListButtonDragged(dragBtn, true)
+  Util.applyCharListDropIndicator(container, dragBtn.sortIndex, dropIndex)
+end
+
+local function bindCharacterListButton(btn, container, key, sortIndex, isSelected)
+  btn.characterKey = key
+  btn.sortIndex = sortIndex
+
+  local manualDragEnabled = (UI.charListSortBy == "manual") and (Util.filterNeedle() == "")
+
+  if not manualDragEnabled then
+    btn:SetScript("OnMouseDown", nil)
+    btn:SetScript("OnMouseUp", nil)
+    btn:SetScript("OnUpdate", nil)
+    btn:SetScript("OnClick", function()
+      if UI.selectedCharacterKey == key then
+        UI.setSelectedCharacter(nil)
+      else
+        UI.setSelectedCharacter(key)
+      end
+    end)
+    return
+  end
+
+  btn:SetScript("OnClick", nil)
+
+  btn:SetScript("OnMouseDown", function(self, button)
+    if button ~= "LeftButton" then
+      return
+    end
+    clearCharListDragState(container)
+    container.charListDragBtn = self
+    self.dragStartY = select(2, GetCursorPosition())
+    self.dragActive = false
+    self.dragKey = key
+    self.wasSelected = isSelected
+
+    self:SetScript("OnUpdate", function(s)
+      if not s.dragStartY then
+        return
+      end
+      local _, cy = GetCursorPosition()
+      local scale = s:GetEffectiveScale()
+      if scale == 0 then
+        return
+      end
+
+      if not s.dragActive then
+        if math.abs(cy - s.dragStartY) <= CHAR_DRAG_THRESHOLD * scale then
+          return
+        end
+        s.dragActive = true
+      end
+
+      updateCharListDragVisuals(container, s, Util.getCharListDropIndex(container, cy))
+    end)
+  end)
+
+  btn:SetScript("OnMouseUp", function(self, button)
+    if button ~= "LeftButton" then
+      return
+    end
+
+    local dragActive = self.dragActive
+    local dragKey = self.dragKey
+    local wasSelected = self.wasSelected
+    local dropIndex = dragActive and Util.getCharListDropIndex(container, select(2, GetCursorPosition()))
+
+    self:SetScript("OnUpdate", nil)
+    self.dragStartY = nil
+    self.dragActive = nil
+    self.dragKey = nil
+    self.wasSelected = nil
+    container.charListDragBtn = nil
+    Util.clearCharListDragVisuals(container)
+
+    if dragActive and dragKey and dropIndex and TuskUpLoot.DB then
+      TuskUpLoot.DB.moveCharacterInManualSort(dragKey, dropIndex)
+      UI.rebuildCharacterList()
+      return
+    end
+
+    if wasSelected then
+      UI.setSelectedCharacter(nil)
+    else
+      UI.setSelectedCharacter(key)
+    end
+  end)
+end
+
 local function refreshAfterDataChange()
   if UI.rebuildItemList then
     UI.rebuildItemList()
@@ -288,11 +396,23 @@ function UI.renderSelectedCharacter()
   UI.renderCharacterPanel()
 end
 
+function UI.resetManualCharacterOrder()
+  if TuskUpLoot.DB then
+    TuskUpLoot.DB.resetManualSortToDefault()
+  end
+  UI.rebuildCharacterList()
+end
+
 function UI.setCharListSortBy(sortBy)
-  if sortBy ~= "name" and sortBy ~= "class" then
+  if sortBy ~= "name" and sortBy ~= "class" and sortBy ~= "manual" then
     return
   end
-  if UI.charListSortBy == sortBy then
+  if sortBy == "manual" then
+    UI.charListSortBy = "manual"
+    if TuskUpLoot.DB then
+      TuskUpLoot.DB.ensureManualSortList()
+    end
+  elseif UI.charListSortBy == sortBy then
     if sortBy == "name" then
       UI.charListSortNameDescending = not UI.charListSortNameDescending
     else
@@ -302,6 +422,9 @@ function UI.setCharListSortBy(sortBy)
     UI.charListSortBy = sortBy
   end
   UI.updateCharSortButtonStyles()
+  if UI.updateCharManualOrderControls then
+    UI.updateCharManualOrderControls()
+  end
   UI.rebuildCharacterList()
 end
 
@@ -316,6 +439,7 @@ function UI.rebuildCharacterList()
   end
 
   local container = UI.charListContainer
+  clearCharListDragState(container)
   if container.buttons then
     for _, b in ipairs(container.buttons) do
       b:Hide()
@@ -324,7 +448,11 @@ function UI.rebuildCharacterList()
   container.buttons = container.buttons or {}
 
   local rows = DB.characterNamesAndClasses() or {}
-  Util.sortCharacterRows(rows, UI.charListSortBy or "name", UI.getCharListSortDescending())
+  local manualSortKeys
+  if (UI.charListSortBy or "name") == "manual" then
+    manualSortKeys = DB.ensureManualSortList()
+  end
+  Util.sortCharacterRows(rows, UI.charListSortBy or "name", UI.getCharListSortDescending(), manualSortKeys)
   local needle = Util.filterNeedle()
   local y = -6
   local btnHeight = 18
@@ -346,13 +474,7 @@ function UI.rebuildCharacterList()
 
       local classColor = C_ClassColor.GetClassColor(class)
       local isSelected = (UI.selectedCharacterKey == key)
-      btn:SetScript("OnClick", function()
-        if not isSelected then
-          UI.setSelectedCharacter(key)
-        else
-          UI.setSelectedCharacter(nil)
-        end
-      end)
+      bindCharacterListButton(btn, container, key, j, isSelected)
 
       local prefix = (isSelected and "|c0cffd200» |r|c" or "  |c") .. classColor:GenerateHexColor()
       local suffix = "|r" .. (isSelected and "|c0cffd200  «|r" or "")

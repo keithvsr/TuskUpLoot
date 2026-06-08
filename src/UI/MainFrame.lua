@@ -170,6 +170,7 @@ function UI.ensureFrame()
 
   UI.charSortNameBtn = createCharSortButton(charSortBar, "Name", "name", 0)
   UI.charSortClassBtn = createCharSortButton(charSortBar, "Class", "class", 54)
+  UI.charSortManualBtn = createCharSortButton(charSortBar, "Manual", "manual", 108)
 
   local scrollTop = -(C.TAB_HEIGHT + 72)
 
@@ -185,9 +186,21 @@ function UI.ensureFrame()
   -- end)
   UI.pushDataBtn = pushDataBtn
 
+  local charManualResetBtn = CreateFrame("Button", nil, listBg, "UIPanelButtonTemplate")
+  charManualResetBtn:SetSize(C.RAIL_WIDTH - 8, 22)
+  charManualResetBtn:SetPoint("BOTTOMLEFT", listBg, "BOTTOMLEFT", 0, 4)
+  charManualResetBtn:SetText("Reset order")
+  charManualResetBtn:Hide()
+  charManualResetBtn:SetScript("OnClick", function()
+    if UI.resetManualCharacterOrder then
+      UI.resetManualCharacterOrder()
+    end
+  end)
+  UI.charManualResetBtn = charManualResetBtn
+
   local charListScroll = CreateFrame("ScrollFrame", nil, listBg, "UIPanelScrollFrameTemplate")
   charListScroll:SetPoint("TOPLEFT", listBg, "TOPLEFT", 0, scrollTop)
-  charListScroll:SetPoint("BOTTOMRIGHT", listBg, "BOTTOMRIGHT", -26, 28)
+  charListScroll:SetPoint("BOTTOMRIGHT", listBg, "BOTTOMRIGHT", -26, 0)
   local charListContainer = CreateFrame("Frame", nil, charListScroll)
   charListContainer:SetWidth(C.RAIL_WIDTH - 8)
   charListContainer:SetHeight(1)
