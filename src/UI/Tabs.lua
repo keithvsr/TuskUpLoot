@@ -45,6 +45,17 @@ function UI.updateCharSortButtonStyles()
   styleCharSortButton(UI.charSortManualBtn, "manual", "Manual")
 end
 
+function UI.updateCharManualOrderControls()
+  local showManualReset = (UI.activeTab == "characters")
+    and ((UI.charListSortBy or "name") == "manual")
+  if UI.charManualResetBtn then
+    UI.charManualResetBtn:SetShown(showManualReset)
+  end
+  if UI.charListScroll and UI.charListScroll:GetParent() then
+    UI.charListScroll:SetPoint("BOTTOMRIGHT", UI.charListScroll:GetParent(), "BOTTOMRIGHT", -26, showManualReset and 28 or 0)
+  end
+end
+
 local function updateTabButtonStyles()
   local active = UI.activeTab
   local tabs = {
@@ -95,6 +106,8 @@ local function updateTabVisibility()
   if UI.charSortBar then
     UI.charSortBar:SetShown(tab == "characters")
   end
+
+  UI.updateCharManualOrderControls()
 
   local titles = {
     characters = "Characters",

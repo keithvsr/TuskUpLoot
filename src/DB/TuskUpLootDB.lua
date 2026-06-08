@@ -34,6 +34,23 @@ local function characterDisplayName(characterKey)
   return string.lower(character and character.name or characterKey or "")
 end
 
+local function characterClassName(characterKey)
+  local chars = TuskUpLootDB and TuskUpLootDB.characters
+  local character = chars and chars[characterKey]
+  return string.lower(character and character.class or "")
+end
+
+local function sortCharacterKeysByClassThenName(keys)
+  table.sort(keys, function(a, b)
+    local aClass = characterClassName(a)
+    local bClass = characterClassName(b)
+    if aClass ~= bClass then
+      return aClass < bClass
+    end
+    return characterDisplayName(a) < characterDisplayName(b)
+  end)
+end
+
 local function appendToManualSort(characterKey)
   ensureSavedVar()
   if type(characterKey) ~= "string" then
@@ -78,13 +95,23 @@ function DB.ensureManualSortList()
       missing[#missing + 1] = characterKey
     end
   end
-  table.sort(missing, function(a, b)
-    return characterDisplayName(a) < characterDisplayName(b)
-  end)
+  sortCharacterKeysByClassThenName(missing)
   for _, key in ipairs(missing) do
     TuskUpLootDB.manualSort[#TuskUpLootDB.manualSort + 1] = key
   end
 
+  return TuskUpLootDB.manualSort
+end
+
+function DB.resetManualSortToDefault()
+  ensureSavedVar()
+  local chars = TuskUpLootDB.characters or {}
+  local keys = {}
+  for characterKey in pairs(chars) do
+    keys[#keys + 1] = characterKey
+  end
+  sortCharacterKeysByClassThenName(keys)
+  TuskUpLootDB.manualSort = keys
   return TuskUpLootDB.manualSort
 end
 

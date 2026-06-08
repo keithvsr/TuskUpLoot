@@ -396,6 +396,13 @@ function UI.renderSelectedCharacter()
   UI.renderCharacterPanel()
 end
 
+function UI.resetManualCharacterOrder()
+  if TuskUpLoot.DB then
+    TuskUpLoot.DB.resetManualSortToDefault()
+  end
+  UI.rebuildCharacterList()
+end
+
 function UI.setCharListSortBy(sortBy)
   if sortBy ~= "name" and sortBy ~= "class" and sortBy ~= "manual" then
     return
@@ -415,6 +422,9 @@ function UI.setCharListSortBy(sortBy)
     UI.charListSortBy = sortBy
   end
   UI.updateCharSortButtonStyles()
+  if UI.updateCharManualOrderControls then
+    UI.updateCharManualOrderControls()
+  end
   UI.rebuildCharacterList()
 end
 
