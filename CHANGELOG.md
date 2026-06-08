@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.2
+
+Manual Character Ordering.
+
+- Adds third tabular view to Character list
+- Allow manually ordering the list of Characters within this new view
+- Preserves manual sorting order between sessions (in DB)
+- Draggable Character names within manual sorting list facilitate resorting
+
 ## 1.0.1
 
 Character List Ordering.
