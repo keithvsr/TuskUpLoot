@@ -499,14 +499,40 @@ local function characterRowClass(row)
   return string.lower(row.class or "")
 end
 
-function Util.sortCharacterRows(rows, sortBy, descending)
+local function buildManualSortPositionMap(manualSortKeys)
+  local positions = {}
+  if type(manualSortKeys) ~= "table" then
+    return positions
+  end
+  for i, key in ipairs(manualSortKeys) do
+    if type(key) == "string" then
+      positions[key] = i
+    end
+  end
+  return positions
+end
+
+function Util.sortCharacterRows(rows, sortBy, descending, manualSortKeys)
   if type(rows) ~= "table" then
     return
   end
   sortBy = sortBy or "name"
+  local manualPositions
+  if sortBy == "manual" then
+    manualPositions = buildManualSortPositionMap(manualSortKeys)
+    descending = false
+  end
   table.sort(rows, function(a, b)
     if descending then
       a, b = b, a
+    end
+    if sortBy == "manual" then
+      local aPos = manualPositions[a.key] or 999999
+      local bPos = manualPositions[b.key] or 999999
+      if aPos ~= bPos then
+        return aPos < bPos
+      end
+      return characterRowName(a) < characterRowName(b)
     end
     if sortBy == "class" then
       local aClass = characterRowClass(a)
@@ -518,6 +544,111 @@ function Util.sortCharacterRows(rows, sortBy, descending)
     end
     return characterRowName(a) < characterRowName(b)
   end)
+end
+
+function Util.getCharListDropIndex(container, cursorY)
+  if not container or not container.buttons or type(cursorY) ~= "number" then
+    return nil
+  end
+
+  local scale = container:GetEffectiveScale()
+  if scale == 0 then
+    return nil
+  end
+  local y = cursorY / scale
+
+  local bestIndex
+  local bestDistance = math.huge
+  for _, btn in ipairs(container.buttons) do
+    if btn:IsShown() and btn.sortIndex then
+      local top = btn:GetTop()
+      local bottom = btn:GetBottom()
+      if top and bottom then
+        if y <= top and y >= bottom then
+          return btn.sortIndex
+        end
+        local mid = (top + bottom) / 2
+        local distance = math.abs(y - mid)
+        if distance < bestDistance then
+          bestDistance = distance
+          bestIndex = btn.sortIndex
+        end
+      end
+    end
+  end
+  return bestIndex
+end
+
+function Util.clearCharListDragVisuals(container)
+  if not container or not container.buttons then
+    return
+  end
+  for _, btn in ipairs(container.buttons) do
+    if btn.text then
+      btn.text:SetAlpha(1)
+    end
+    if btn.dropIndicator then
+      btn.dropIndicator:Hide()
+    end
+    if btn.bg then
+      btn.bg:Hide()
+    end
+  end
+end
+
+function Util.setCharListButtonDragged(btn, dragged)
+  if not btn or not btn.text then
+    return
+  end
+  if dragged then
+    btn.text:SetAlpha(0.45)
+  else
+    btn.text:SetAlpha(1)
+  end
+end
+
+function Util.ensureListButtonDropIndicator(btn)
+  if not btn then
+    return
+  end
+  if not btn.dropIndicator then
+    btn.dropIndicator = btn:CreateTexture(nil, "OVERLAY")
+    btn.dropIndicator:SetColorTexture(1, 0.84, 0, 1)
+    btn.dropIndicator:SetHeight(2)
+    btn.dropIndicator:Hide()
+  end
+end
+
+function Util.applyCharListDropIndicator(container, dragIndex, dropIndex)
+  if not container or not container.buttons then
+    return
+  end
+  for _, btn in ipairs(container.buttons) do
+    if btn.dropIndicator then
+      btn.dropIndicator:Hide()
+    end
+  end
+  if not dropIndex or not dragIndex or dragIndex == dropIndex then
+    return
+  end
+
+  for _, btn in ipairs(container.buttons) do
+    if btn:IsShown() and btn.sortIndex == dropIndex then
+      Util.ensureListButtonDropIndicator(btn)
+      local indicator = btn.dropIndicator
+      indicator:ClearAllPoints()
+      if dragIndex < dropIndex then
+        indicator:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 4, 0)
+        indicator:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -4, 0)
+      else
+        indicator:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, 0)
+        indicator:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -4, 0)
+      end
+      indicator:SetHeight(2)
+      indicator:Show()
+      break
+    end
+  end
 end
 
 function Util.getOrCreateCharGearItemRow(container, rows, index, rowHeight)
