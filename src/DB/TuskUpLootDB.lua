@@ -11,6 +11,7 @@ local function getDefaults()
     items = {},
     characters = {},
     raidRuns = {},
+    manualSort = {},
   }
 end
 
@@ -25,6 +26,97 @@ local function ensureSavedVar()
       TuskUpLootDB[k] = v
     end
   end
+end
+
+local function characterDisplayName(characterKey)
+  local chars = TuskUpLootDB and TuskUpLootDB.characters
+  local character = chars and chars[characterKey]
+  return string.lower(character and character.name or characterKey or "")
+end
+
+local function appendToManualSort(characterKey)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" then
+    return
+  end
+  if type(TuskUpLootDB.manualSort) ~= "table" then
+    TuskUpLootDB.manualSort = {}
+  end
+  for _, key in ipairs(TuskUpLootDB.manualSort) do
+    if key == characterKey then
+      return
+    end
+  end
+  TuskUpLootDB.manualSort[#TuskUpLootDB.manualSort + 1] = characterKey
+end
+
+function DB.ensureManualSortList()
+  ensureSavedVar()
+  if type(TuskUpLootDB.manualSort) ~= "table" then
+    TuskUpLootDB.manualSort = {}
+  end
+
+  local chars = TuskUpLootDB.characters or {}
+  local present = {}
+  for _, key in ipairs(TuskUpLootDB.manualSort) do
+    if type(key) == "string" and chars[key] and not present[key] then
+      present[key] = true
+    end
+  end
+
+  local pruned = {}
+  for _, key in ipairs(TuskUpLootDB.manualSort) do
+    if present[key] then
+      pruned[#pruned + 1] = key
+    end
+  end
+  TuskUpLootDB.manualSort = pruned
+
+  local missing = {}
+  for characterKey in pairs(chars) do
+    if not present[characterKey] then
+      missing[#missing + 1] = characterKey
+    end
+  end
+  table.sort(missing, function(a, b)
+    return characterDisplayName(a) < characterDisplayName(b)
+  end)
+  for _, key in ipairs(missing) do
+    TuskUpLootDB.manualSort[#TuskUpLootDB.manualSort + 1] = key
+  end
+
+  return TuskUpLootDB.manualSort
+end
+
+function DB.getManualSortPositionMap()
+  local manualSort = DB.ensureManualSortList()
+  local positions = {}
+  for i, key in ipairs(manualSort) do
+    positions[key] = i
+  end
+  return positions
+end
+
+function DB.moveCharacterInManualSort(characterKey, toIndex)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" or type(toIndex) ~= "number" then
+    return
+  end
+
+  local manualSort = DB.ensureManualSortList()
+  local fromIndex
+  for i, key in ipairs(manualSort) do
+    if key == characterKey then
+      fromIndex = i
+      break
+    end
+  end
+  if not fromIndex or fromIndex == toIndex then
+    return
+  end
+
+  local key = table.remove(manualSort, fromIndex)
+  table.insert(manualSort, toIndex, key)
 end
 
 local function upsertItem(itemId, item)
@@ -140,9 +232,11 @@ function DB.upsertCharacter(characterKey, character)
   end
 
   local chars = TuskUpLootDB.characters
-  if chars[characterKey] == nil or chars[characterKey].gearSets == nil then
+  local isNew = (chars[characterKey] == nil or chars[characterKey].gearSets == nil)
+  if isNew then
     character.gearSets = {}
     chars[characterKey] = character
+    appendToManualSort(characterKey)
   else
     local existingCharacter = chars[characterKey]
     for k, v in pairs(character) do
