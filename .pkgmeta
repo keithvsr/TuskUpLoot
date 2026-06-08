@@ -5,6 +5,10 @@ package-as: TuskUpLoot
 move-folders:
   TuskUpLoot/src: TuskUpLoot
 
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 ignore:
   - build.sh
   - dist
@@ -15,4 +19,3 @@ ignore:
   - .gitignore
   - README.md
   - CHANGELOG.md
-  - LICENSE

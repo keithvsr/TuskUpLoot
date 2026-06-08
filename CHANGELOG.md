@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1
+
+Character List Ordering.
+
+- Fix Character name ordering to be case-insensitive
+- Add grouping by Character Class
+- Tabular UI to switch between Character lists
+- Reversible ordering for both display choices
+
 ## 1.0.0
 
 First public release.
