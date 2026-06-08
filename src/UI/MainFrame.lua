@@ -170,6 +170,7 @@ function UI.ensureFrame()
 
   UI.charSortNameBtn = createCharSortButton(charSortBar, "Name", "name", 0)
   UI.charSortClassBtn = createCharSortButton(charSortBar, "Class", "class", 54)
+  UI.charSortManualBtn = createCharSortButton(charSortBar, "Manual", "manual", 108)
 
   local scrollTop = -(C.TAB_HEIGHT + 72)
 
