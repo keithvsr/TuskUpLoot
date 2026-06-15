@@ -240,19 +240,19 @@ local function requestItemDataRecursive(itemId, seen)
   end
 end
 
-function Data.sortedInstanceIds()
-  local ids = {}
-  if not Data.Instances then
-    return ids
-  end
-  for id in pairs(Data.Instances) do
-    ids[#ids + 1] = id
-  end
-  table.sort(ids, function(a, b)
-    local instA = Data.Instances[a]
-    local instB = Data.Instances[b]
-    return (instA and instA.name or "") < (instB and instB.name or "")
-  end)
+function Data.orderedInstanceIds()
+  -- order raids by phase and general conception of order
+  local ids = {
+    532, -- karazhan
+    565, -- gruul's lair
+    544, -- magtheridon's lair
+    548, -- serpentshrine cavern
+    550, -- tempest keep
+    534, -- hyjal summit
+    564, -- black temple
+    568, -- zul'aman
+    580, -- sunwell plateau
+  }
   return ids
 end
 

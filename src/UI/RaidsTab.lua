@@ -204,7 +204,7 @@ function UI.rebuildRaidList()
   local rowIndex = 0
   local y = -6
 
-  for _, instanceId in ipairs(Data.sortedInstanceIds()) do
+  for _, instanceId in ipairs(Data.orderedInstanceIds()) do
     local instance = Data.Instances[instanceId]
     if instance then
       rowIndex = rowIndex + 1
