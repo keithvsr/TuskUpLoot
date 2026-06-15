@@ -1,4 +1,11 @@
-# Changelog
+# TuskUpLoot
+
+## 1.0.3
+
+Encounter tracking fixes
+
+- Addresses bug with how instance ids and unique zone ids were being handled
+- Raid lockouts now correctly identify as individual runs
 
 ## 1.0.2
 
