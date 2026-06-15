@@ -53,22 +53,23 @@ local function guidParts(guid)
   return parts
 end
 
-local function isCreatureGuid(guid)
-  local parts = guidParts(guid)
-  return parts[1] == "Creature"
+local function isCreatureGuid(guidPart)
+  return guidPart == "Creature"
 end
 
 -- Creature-0-ServerID-InstanceID-ZoneUID-SpawnUID (see UnitGUID wiki)
 local function parseRunInstanceIdFromCreatureGuid(guid)
-  if not isCreatureGuid(guid) then
+  local parts = guidParts(guid)
+  -- first part of the GUID shows type of unit
+  if not isCreatureGuid(parts[1]) then
     return nil
   end
-  local parts = guidParts(guid)
-  local instanceToken
+  local instanceToken = nil
   if parts[2] == "0" and #parts >= 4 then
-    instanceToken = parts[4]
-  elseif #parts >= 3 then
-    instanceToken = parts[3]
+    instanceToken = parts[5]
+    -- FINDME: unclear on when this is used, leaving commented for now
+    -- elseif #parts >= 3 then
+    --   instanceToken = parts[3]
   end
   if not instanceToken then
     return nil
