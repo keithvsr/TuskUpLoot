@@ -15,6 +15,7 @@ function UI.ensureFrame()
   f:SetMovable(true)
   f:EnableMouse(true)
   f:SetClampedToScreen(true)
+  f:SetFrameStrata("HIGH")
 
   local dragRegion = CreateFrame("Frame", nil, f)
   dragRegion:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -10)
