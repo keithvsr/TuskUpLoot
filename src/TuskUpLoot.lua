@@ -5,25 +5,10 @@ local addon = TuskUpLoot
 addon.addonName = ADDON_NAME
 addon.State = addon.State or {}
 
-local REQUIRED_GUILD_NAME = "Tusk Up"
-addon.requiredGuildName = REQUIRED_GUILD_NAME
-
 function addon.chatPrint(msg)
   if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
     DEFAULT_CHAT_FRAME:AddMessage("|cffffff88" .. ADDON_NAME .. "|r: " .. tostring(msg))
   end
-end
-
-local function isPlayerInGuild()
-  return IsInGuild() and GetGuildInfo("player") ~= nil
-end
-
-function addon.isInRequiredGuild()
-  if not isPlayerInGuild() then
-    return true
-  end
-  local guildName = GetGuildInfo("player")
-  return guildName == REQUIRED_GUILD_NAME
 end
 
 local eventFrame = CreateFrame("Frame", "TuskUpLootEventFrame")

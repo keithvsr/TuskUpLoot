@@ -1,5 +1,12 @@
 # TuskUpLoot
 
+## 1.x.x
+
+Remove guild membership restrictions
+
+- Remove checks against guild membership
+- Clear event registration and handling for PLAYER_GUILD_UPDATE events
+
 ## 1.0.3
 
 Encounter tracking fixes

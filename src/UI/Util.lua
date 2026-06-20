@@ -12,13 +12,6 @@ function Util.safeChatPrint(msg)
   end
 end
 
-function Util.isInRequiredGuild()
-  if TuskUpLoot.isInRequiredGuild then
-    return TuskUpLoot.isInRequiredGuild()
-  end
-  return true
-end
-
 function Util.getRaidState()
   return TuskUpLoot.State or {}
 end

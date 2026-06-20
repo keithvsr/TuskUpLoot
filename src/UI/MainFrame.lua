@@ -428,12 +428,6 @@ function UI.ensureFrame()
 end
 
 function UI.toggle()
-  if not Util.isInRequiredGuild() then
-    Util.safeChatPrint(string.format("Disabled: only available to members of guild '%s'.",
-      TuskUpLoot.requiredGuildName or "Tusk Up"))
-    return
-  end
-
   UI.ensureFrame()
   if UI.frame:IsShown() then
     UI.dismissAllFrames()
