@@ -289,103 +289,112 @@ eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
 eventFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
-local function eventHandler(_, event, ...)
-  if event == "ADDON_LOADED" then
-    local addonName = ...
-    if addonName ~= addon.addonName then
-      return
-    end
+local function handleAddonLoaded(...)
+  local addonName = ...
+  if addonName ~= addon.addonName then
+    return
+  end
 
-    if addon.DB and addon.DB.init then
-      addon.DB.init()
-      addon.dbInitialized = true
-    end
+  if addon.DB and addon.DB.init then
+    addon.DB.init()
+    addon.dbInitialized = true
+  end
 
     local itemIds = addon.DB.sortedItemIDs()
-    addon.totalItems = itemIds and #itemIds or 0
-    if addon.totalItems > 0 then
-      addon.pendingItems = {}
-      for _, itemId in ipairs(itemIds) do
-        addon.pendingItems[itemId] = true
-      end
-      addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
-      for _, itemId in ipairs(itemIds) do
-        C_Item.RequestLoadItemDataByID(itemId)
-      end
-    else
-      addon.chatPrint("AddOn Initialized.")
+  addon.totalItems = itemIds and #itemIds or 0
+  if addon.totalItems > 0 then
+    addon.pendingItems = {}
+    for _, itemId in ipairs(itemIds) do
+      addon.pendingItems[itemId] = true
     end
+    addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
+    for _, itemId in ipairs(itemIds) do
+      C_Item.RequestLoadItemDataByID(itemId)
+    end
+  else
+    addon.chatPrint("AddOn Initialized.")
+  end
 
-    SLASH_TUSKUPLOOT1 = "/tul"
-    SLASH_TUSKUPLOOT2 = "/tuskup"
-    SlashCmdList.TUSKUPLOOT = function()
-      if addon.UI and addon.UI.toggle then
-        addon.UI.toggle()
-      end
+  SLASH_TUSKUPLOOT1 = "/tul"
+  SLASH_TUSKUPLOOT2 = "/tuskup"
+  SlashCmdList.TUSKUPLOOT = function()
+    if addon.UI and addon.UI.toggle then
+      addon.UI.toggle()
     end
+  end
 
-    eventFrame:UnregisterEvent("ADDON_LOADED")
+  eventFrame:UnregisterEvent("ADDON_LOADED")
 
-    local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-    local instance = TuskUpLoot.Data.Instances[instanceId]
-    if instanceType == "raid" and instance then
-      enterRaidInstance(instanceId)
+  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
+  local instance = TuskUpLoot.Data.Instances[instanceId]
+  if instanceType == "raid" and instance then
+    enterRaidInstance(instanceId)
+  end
+end
+
+local function handleItemDataLoadResult(...)
+  local itemId, success = ...
+  if addon.pendingItems and addon.pendingItems[itemId] then
+    addon.pendingItems[itemId] = nil
+    if next(addon.pendingItems) == nil then
+      addon.pendingItems = nil
+      addon.chatPrint("All item data requests completed.")
+      eventFrame:UnregisterEvent("ITEM_DATA_LOAD_RESULT")
     end
-  elseif event == "PLAYER_GUILD_UPDATE" then
-    if addon.UI
-        and addon.UI.frame
-        and addon.UI.frame:IsShown()
-        and not addon.isInRequiredGuild() then
-      if addon.UI.dismissAllFrames then
-        addon.UI.dismissAllFrames()
-      elseif addon.UI.frame then
-        addon.UI.frame:Hide()
-      end
-    end
+  end
+end
+
+local function handleZoneChangedNewArea()
+  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
+  local instance = TuskUpLoot.Data.Instances[instanceId]
+  if instanceType ~= "raid" or not instance then
+    leaveRaidInstance()
+    return
+  end
+  if addon.State.InstanceId == instanceId then
+    tryCaptureRunInstanceFromNearbyNpcs()
+    return
+  end
+  enterRaidInstance(instanceId)
+end
+
+local function handleEncounterStart(...)
+  local encounterId = ...
+  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  if not encounter then return end
+  if encounter.instance_id ~= addon.State.InstanceId then return end
+  addon.State.EncounterId = encounterId
+  tryCaptureRunInstanceFromNearbyNpcs()
+end
+
+local function handleEncounterEnd(...)
+  local encounterId, _, _, _, success = ...
+  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  if not encounter then return end
+  if encounter.instance_id ~= addon.State.InstanceId then return end
+  if success then
+    tryCaptureRunInstanceFromNearbyNpcs()
+    recordEncounterClear(encounterId)
+    notifyRaidStateChanged()
+  end
+  addon.State.EncounterId = nil
+end
+
+local function eventHandler(_, event, ...)
+  if event == "ADDON_LOADED" then
+    return handleAddonLoaded(...)
   elseif event == "ITEM_DATA_LOAD_RESULT" then
-    local itemId, success = ...
-    if addon.pendingItems and addon.pendingItems[itemId] then
-      addon.pendingItems[itemId] = nil
-      if next(addon.pendingItems) == nil then
-        addon.pendingItems = nil
-        addon.chatPrint("All item data requests completed.")
-        eventFrame:UnregisterEvent("ITEM_DATA_LOAD_RESULT")
-      end
-    end
+    return handleItemDataLoadResult(...)
+  elseif event == "ZONE_CHANGED_NEW_AREA" then
+    return handleZoneChangedNewArea()
+  elseif event == "ENCOUNTER_START" then
+    return handleEncounterStart(...)
+  elseif event == "ENCOUNTER_END" then
+    return handleEncounterEnd(...)
   elseif event == "PLAYER_TARGET_CHANGED" or event == "UPDATE_MOUSEOVER_UNIT" then
     if addon.State.InstanceId then
       tryCaptureRunInstanceFromNearbyNpcs()
     end
-  elseif event == "ZONE_CHANGED_NEW_AREA" then
-    local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-    local instance = TuskUpLoot.Data.Instances[instanceId]
-    if instanceType ~= "raid" or not instance then
-      leaveRaidInstance()
-      return
-    end
-    if addon.State.InstanceId == instanceId then
-      tryCaptureRunInstanceFromNearbyNpcs()
-      return
-    end
-    enterRaidInstance(instanceId)
-  elseif event == "ENCOUNTER_START" then
-    local encounterId = ...
-    local encounter = TuskUpLoot.Data.Encounters[encounterId]
-    if not encounter then return end
-    if encounter.instance_id ~= addon.State.InstanceId then return end
-    addon.State.EncounterId = encounterId
-    tryCaptureRunInstanceFromNearbyNpcs()
-  elseif event == "ENCOUNTER_END" then
-    local encounterId, _, _, _, success = ...
-    local encounter = TuskUpLoot.Data.Encounters[encounterId]
-    if not encounter then return end
-    if encounter.instance_id ~= addon.State.InstanceId then return end
-    if success then
-      tryCaptureRunInstanceFromNearbyNpcs()
-      recordEncounterClear(encounterId)
-      notifyRaidStateChanged()
-    end
-    addon.State.EncounterId = nil
   elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
     if addon.State.InstanceId then
       handleCombatLog()
@@ -393,6 +402,9 @@ local function eventHandler(_, event, ...)
   end
 end
 
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:SetScript("OnEvent", eventHandler)
 
 -- Guild sync disabled; re-enable by loading Sync/*.lua in .toc and uncommenting below.
