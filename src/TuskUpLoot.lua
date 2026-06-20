@@ -46,9 +46,7 @@ end
 local function parseRunInstanceIdFromCreatureGuid(guid)
   local parts = guidParts(guid)
   -- first part of the GUID shows type of unit
-  if not isCreatureGuid(parts[1]) then
-    return nil
-  end
+  if not isCreatureGuid(parts[1]) then return nil end
   local instanceToken = nil
   if parts[2] == "0" and #parts >= 4 then
     instanceToken = parts[5]
@@ -284,10 +282,18 @@ local function handleCombatLog()
   end
 end
 
-eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
-eventFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
-eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+local function getAllItemIds()
+  local itemIds = {}
+  local listItems = addon.DB.sortedItemIDs()
+  for _, itemId in ipairs(listItems) do
+    itemIds[#itemIds + 1] = itemId
+  end
+  local dropItems = addon.Data.getDropItemIds()
+  for _, itemId in ipairs(dropItems) do
+    itemIds[#itemIds + 1] = itemId
+  end
+  return itemIds
+end
 
 local function handleAddonLoaded(...)
   local addonName = ...
@@ -300,7 +306,7 @@ local function handleAddonLoaded(...)
     addon.dbInitialized = true
   end
 
-    local itemIds = addon.DB.sortedItemIDs()
+  local itemIds = getAllItemIds()
   addon.totalItems = itemIds and #itemIds or 0
   if addon.totalItems > 0 then
     addon.pendingItems = {}

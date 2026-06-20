@@ -279,3 +279,14 @@ function Data.requestInstanceItemData(instanceId)
     end
   end
 end
+
+function Data.getDropItemIds()
+  local itemIds = {}
+  for k in pairs(Data.Items) do
+    itemIds[#itemIds + 1] = k
+  end
+  table.sort(itemIds, function(a, b)
+    return a < b
+  end)
+  return itemIds
+end
