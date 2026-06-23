@@ -295,6 +295,68 @@ local function getAllItemIds()
   return itemIds
 end
 
+local function isValidLoot(locked, quality, threshold)
+  addon.chatPrint(string.format("locked: %s, quality: %s, threshold: %s", tostring(locked), quality, threshold))
+  -- return true
+  return not locked and quality and threshold < quality
+end
+
+local function updateLootMasterState()
+  addon.State.IsLootMaster = IsInRaid() and IsMasterLooter()
+end
+
+local function collectRaidMemberKeys()
+  local keys = {}
+  if not IsInRaid() then
+    return keys
+  end
+  for i = 1, GetNumGroupMembers() do
+    local name = GetRaidRosterInfo(i)
+    if name then
+      keys[name:lower()] = name
+    end
+  end
+  local player = UnitName("player")
+  if player then
+    keys[player:lower()] = player
+  end
+  return keys
+end
+
+local function filterNeedInfoToRaid(needInfo, raidKeys)
+  local labels = {}
+  local seen = {}
+
+  if needInfo.hasRewardNeeds and needInfo.rewardGroups then
+    for _, group in ipairs(needInfo.rewardGroups) do
+      local pieceName = group.name or ("Item " .. tostring(group.itemId))
+      for _, row in ipairs(group.needs or {}) do
+        local key = row.characterKey
+        if key and raidKeys[key] and not seen[key] then
+          seen[key] = true
+          local who = row.who or raidKeys[key]
+          labels[#labels + 1] = string.format("%s (%s)", who, pieceName)
+        end
+      end
+    end
+  else
+    for _, row in ipairs(needInfo.needs or {}) do
+      local key = row.characterKey
+      if key and raidKeys[key] and not seen[key] then
+        seen[key] = true
+        labels[#labels + 1] = row.who or raidKeys[key]
+      end
+    end
+  end
+
+  table.sort(labels)
+  return labels
+end
+
+local function handleGroupLootStateChanged()
+  updateLootMasterState()
+end
+
 local function handleAddonLoaded(...)
   local addonName = ...
   if addonName ~= addon.addonName then
@@ -336,6 +398,8 @@ local function handleAddonLoaded(...)
   if instanceType == "raid" and instance then
     enterRaidInstance(instanceId)
   end
+
+  updateLootMasterState()
 end
 
 local function handleItemDataLoadResult(...)
@@ -386,6 +450,65 @@ local function handleEncounterEnd(...)
   addon.State.EncounterId = nil
 end
 
+-- PARTY_LOOT_METHOD_CHANGED
+-- GROUP_ROSTER_UPDATE
+-- PLAYER_ROLES_ASSIGNED
+
+local function handleLootReady(...)
+  if not addon.State.IsLootMaster then
+    return
+  end
+  -- addon.chatPrint("Loot ready")
+
+  -- get total number of loot items and whether player is master looter
+  -- local numItems = GetNumLootItems()
+  local lootInfo = GetLootInfo()
+  -- local numItems = #lootInfo
+  -- addon.chatPrint(numItems .. " items to loot (GetNumLootItems)")
+  -- addon.chatPrint(#lootInfo .. " num items in loot info (GetLootInfo)")
+  -- if isMasterLooter and numItems and numItems > 0 then
+  -- get loot master threshold
+  local lootThreshold = GetLootThreshold()
+  local raidKeys = collectRaidMemberKeys()
+  local Data = addon.Data
+
+  for itemIdx, itemInfo in ipairs(lootInfo) do
+    -- local itemInfo = lootInfo[itemIdx]
+    -- local itemInfoAtIdx = lootInfo[itemIdx]
+    -- if itemInfoAtIdx then
+    addon.chatPrint(itemInfo.item .. " item info at idx (GetLootInfo)")
+    -- end
+    local itemLink = GetLootSlotLink(itemIdx)
+    -- double check item is valid and returned data
+    if itemLink and isValidLoot(itemInfo.locked, itemInfo.quality, lootThreshold) then
+      -- local _, _, _, _, quality, locked = GetLootSlotInfo(itemIdx)
+      -- if item is lootable
+      -- addon.chatPrint(itemLink .. " is valid loot")
+      -- addon.chatPrint(itemLink)
+      -- C_ChatInfo.SendChatMessage(itemLink, "PARTY")
+      local itemId = C_Item.GetItemIDForItemInfo(itemLink)
+      -- addon.chatPrint(string.format("Item ID: %s", itemId))
+
+      if itemId and Data and Data.getItemNeedInfo then
+        local needInfo = Data.getItemNeedInfo(itemId)
+        local neededBy = filterNeedInfoToRaid(needInfo, raidKeys)
+        if #neededBy > 0 then
+          C_ChatInfo.SendChatMessage(
+            string.format("%s - needed by %s", itemLink, table.concat(neededBy, ", ")),
+            "RAID"
+          )
+        else
+          C_ChatInfo.SendChatMessage(
+            string.format("%s - not needed by any raid member", itemLink),
+            "RAID"
+          )
+        end
+      end
+      -- end
+    end
+  end
+end
+
 local function eventHandler(_, event, ...)
   if event == "ADDON_LOADED" then
     return handleAddonLoaded(...)
@@ -405,12 +528,22 @@ local function eventHandler(_, event, ...)
     if addon.State.InstanceId then
       handleCombatLog()
     end
+  elseif event == "LOOT_READY" then
+    return handleLootReady(...)
+  elseif event == "PARTY_LOOT_METHOD_CHANGED"
+      or event == "GROUP_ROSTER_UPDATE"
+      or event == "PLAYER_ROLES_ASSIGNED" then
+    return handleGroupLootStateChanged()
   end
 end
 
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+eventFrame:RegisterEvent("LOOT_READY")
+eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
+eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
 eventFrame:SetScript("OnEvent", eventHandler)
 
 -- Guild sync disabled; re-enable by loading Sync/*.lua in .toc and uncommenting below.
