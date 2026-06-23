@@ -1,11 +1,10 @@
 # TuskUpLoot
 
-## 1.x.x
+## 1.1.0
 
-Remove guild membership restrictions
+- Open addon to use outside of `<Tusk Up>` guild
+- Event handler refactor & bug fixes
 
-- Remove checks against guild membership
-- Clear event registration and handling for PLAYER_GUILD_UPDATE events
 
 ## 1.0.3
 
