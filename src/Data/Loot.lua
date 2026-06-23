@@ -226,6 +226,39 @@ function Data.getItemNeedSummary(itemId)
   return needCount, hasCount
 end
 
+function Data.getItemNeedInfo(itemId)
+  local rollup = Data.getAggregatedItemRollup(itemId)
+  local rewardGroups = Data.getTierTokenNeedsByReward(itemId)
+  local hasRewardNeeds = rewardGroups and #rewardGroups > 0
+
+  local needs = {}
+  local has = {}
+  for _, row in ipairs(rollup or {}) do
+    local who = row.name or row.characterKey
+    if row.hasAcquired then
+      has[#has + 1] = {
+        who = who,
+        gearSets = row.gearSets or {},
+      }
+    else
+      needs[#needs + 1] = {
+        who = who,
+        characterKey = row.characterKey,
+        gearSets = row.gearSets or {},
+        markItemId = row.markItemId,
+      }
+    end
+  end
+
+  return {
+    needs = needs,
+    has = has,
+    rewardGroups = rewardGroups,
+    hasRewardNeeds = hasRewardNeeds,
+    hasNeeds = hasRewardNeeds or (#needs > 0),
+  }
+end
+
 local function requestItemDataRecursive(itemId, seen)
   if not itemId or seen[itemId] or not C_Item or not C_Item.RequestLoadItemDataByID then
     return

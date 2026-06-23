@@ -292,12 +292,13 @@ function UI.renderSelectedItem()
   local Data = TuskUpLoot.Data
   local selectedItemId = UI.selectedItemId
   local item = selectedItemId and DB and DB.getItem(selectedItemId)
-  local rollup = (selectedItemId and Data and Data.getAggregatedItemRollup)
-    and Data.getAggregatedItemRollup(selectedItemId)
-  local rewardGroups = (selectedItemId and Data and Data.getTierTokenNeedsByReward)
-    and Data.getTierTokenNeedsByReward(selectedItemId)
-  local hasRewardNeeds = rewardGroups and #rewardGroups > 0
-  local hasRollup = (rollup and #rollup > 0) or hasRewardNeeds
+  local needInfo = (selectedItemId and Data and Data.getItemNeedInfo)
+    and Data.getItemNeedInfo(selectedItemId)
+  local rewardGroups = needInfo and needInfo.rewardGroups
+  local hasRewardNeeds = needInfo and needInfo.hasRewardNeeds
+  local hasRollup = needInfo and (
+    (#needInfo.needs > 0) or (#needInfo.has > 0) or hasRewardNeeds
+  )
 
   if not selectedItemId then
     if UI.itemIconBtn then
@@ -384,10 +385,7 @@ function UI.renderSelectedItem()
   end
   UI.detailLinkFS:SetText(itemLink)
 
-  if not hasRollup then
-    rollup = nil
-  end
-  if not rollup or #rollup == 0 then
+  if not needInfo or ((#needInfo.needs == 0) and (#needInfo.has == 0) and not hasRewardNeeds) then
     UI.needsTitle:SetText("No characters linked to this item in saved data.")
     clearNeedsList()
     UI.needsListContainer:Hide()
@@ -397,23 +395,14 @@ function UI.renderSelectedItem()
     UI.hasTitle:Hide()
     UI.hasText:Hide()
   else
-    local needs = {}
+    local needs = needInfo.needs
     local has = {}
-    for _, row in ipairs(rollup) do
-      local who = row.name or row.characterKey
-      if row.hasAcquired then
-        has[#has + 1] = string.format("%s", who)
-        for _, gs in ipairs(row.gearSets or {}) do
-          local phase = gs.phase ~= nil and string.format(" (Phase %s)", tostring(gs.phase)) or ""
-          has[#has + 1] = string.format("    • %s%s", gs.name or gs.key, phase)
-        end
-      else
-        needs[#needs + 1] = {
-          who = who,
-          characterKey = row.characterKey,
-          gearSets = row.gearSets or {},
-          markItemId = row.markItemId,
-        }
+    for _, row in ipairs(needInfo.has) do
+      local who = row.who or "Unknown"
+      has[#has + 1] = string.format("%s", who)
+      for _, gs in ipairs(row.gearSets or {}) do
+        local phase = gs.phase ~= nil and string.format(" (Phase %s)", tostring(gs.phase)) or ""
+        has[#has + 1] = string.format("    • %s%s", gs.name or gs.key, phase)
       end
     end
 
