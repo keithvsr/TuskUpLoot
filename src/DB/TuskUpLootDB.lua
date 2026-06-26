@@ -190,14 +190,26 @@ function DB.getRaidRunKey(mapId, runInstanceId)
   return string.format("%d:%d", mapId, runInstanceId)
 end
 
+local function copyEncounterDropsTable(drops)
+  local out = {}
+  for encId, list in pairs(drops or {}) do
+    local copy = {}
+    for i, itemId in ipairs(list) do
+      copy[i] = itemId
+    end
+    out[encId] = copy
+  end
+  return out
+end
+
 function DB.loadRaidRun(runKey)
   ensureSavedVar()
   if not runKey or not TuskUpLootDB.raidRuns then
-    return { cleared = {}, lastEncounter = nil }
+    return { cleared = {}, lastEncounter = nil, drops = {} }
   end
   local run = TuskUpLootDB.raidRuns[runKey]
   if not run then
-    return { cleared = {}, lastEncounter = nil }
+    return { cleared = {}, lastEncounter = nil, drops = {} }
   end
   local cleared = {}
   if run.cleared then
@@ -208,7 +220,35 @@ function DB.loadRaidRun(runKey)
   return {
     cleared = cleared,
     lastEncounter = run.lastEncounter,
+    drops = copyEncounterDropsTable(run.drops),
   }
+end
+
+function DB.appendEncounterDrops(runKey, mapId, encounterId, itemIds)
+  ensureSavedVar()
+  if not runKey or not encounterId or not itemIds or #itemIds == 0 then
+    return
+  end
+  if not TuskUpLootDB.raidRuns then
+    TuskUpLootDB.raidRuns = {}
+  end
+  local run = TuskUpLootDB.raidRuns[runKey]
+  if not run then
+    run = { mapId = mapId, cleared = {}, drops = {}, updatedAt = time() }
+    TuskUpLootDB.raidRuns[runKey] = run
+  end
+  if not run.drops then
+    run.drops = {}
+  end
+  if not run.drops[encounterId] then
+    run.drops[encounterId] = {}
+  end
+  local list = run.drops[encounterId]
+  for _, itemId in ipairs(itemIds) do
+    list[#list + 1] = itemId
+  end
+  run.mapId = mapId or run.mapId
+  run.updatedAt = time()
 end
 
 function DB.saveEncounterClear(runKey, mapId, encounterId)
