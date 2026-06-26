@@ -33,8 +33,39 @@ local function raidReturnContext()
   }
 end
 
+local function aggregateDropCounts(itemIds)
+  local order = {}
+  local counts = {}
+  for _, itemId in ipairs(itemIds or {}) do
+    if not counts[itemId] then
+      counts[itemId] = 0
+      order[#order + 1] = itemId
+    end
+    counts[itemId] = counts[itemId] + 1
+  end
+  return order, counts
+end
+
+local function updateEncounterLootToggle()
+  local btn = UI.encounterLootToggleBtn
+  if not btn then
+    return
+  end
+  if UI.activeTab ~= "raids" or not UI.focusEncounterId then
+    btn:Hide()
+    return
+  end
+  btn:Show()
+  if UI.encounterLootView == "full" then
+    btn:SetText("Actual drops")
+  else
+    btn:SetText("Full loot table")
+  end
+end
+
 local function selectEncounter(encounterId)
   UI.focusEncounterId = encounterId
+  UI.encounterLootView = "actual"
   if TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
     TuskUpLoot.Data.requestEncounterItemData(encounterId)
   end
@@ -65,7 +96,7 @@ function UI.renderEncounterLootPanel()
   if UI.detailLinkFS and UI.detailHeader then
     UI.detailLinkFS:ClearAllPoints()
     UI.detailLinkFS:SetPoint("LEFT", UI.detailHeader, "LEFT", 0, 0)
-    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -4, 0)
+    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -170, 0)
   end
   if UI.needsTitle then UI.needsTitle:Hide() end
   if UI.needsListContainer then UI.needsListContainer:Hide() end
@@ -88,6 +119,7 @@ function UI.renderEncounterLootPanel()
     if UI.detailLinkFS then
       UI.detailLinkFS:SetText("Select an encounter")
     end
+    updateEncounterLootToggle()
     container:Hide()
     UI.detailScrollChild:SetHeight(8)
     return
@@ -97,17 +129,19 @@ function UI.renderEncounterLootPanel()
   if UI.detailLinkFS then
     UI.detailLinkFS:SetText(encounter and (encounter.name or ("Encounter " .. tostring(focusEnc))) or "")
   end
+  updateEncounterLootToggle()
 
   local lootIds = {}
+  local dropCounts = nil
+  local emptyMessage = "No drops recorded yet."
   if Data then
     local state = Util.getRaidState()
-    if state.LastKilledBoss then
-      lootIds = Data.getEncounterLootIdsForSource(focusEnc, "npc", state.LastKilledBoss)
-      if not lootIds or #lootIds == 0 then
-        lootIds = Data.getEncounterLootIds(focusEnc)
-      end
-    else
+    if UI.encounterLootView == "full" then
       lootIds = Data.getEncounterLootIds(focusEnc)
+      emptyMessage = "No loot for this encounter."
+    else
+      local actualDrops = state.EncounterDrops and state.EncounterDrops[focusEnc] or {}
+      lootIds, dropCounts = aggregateDropCounts(actualDrops)
     end
   end
   lootIds = Util.filterVisibleItemIds(lootIds or {})
@@ -125,7 +159,7 @@ function UI.renderEncounterLootPanel()
       container.emptyFS = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
       container.emptyFS:SetPoint("TOPLEFT", container, "TOPLEFT", 4, 0)
     end
-    container.emptyFS:SetText("No loot for this encounter.")
+    container.emptyFS:SetText(emptyMessage)
     container.emptyFS:Show()
     UI.detailScrollChild:SetHeight(math.max(1, 28))
     return
@@ -152,6 +186,9 @@ function UI.renderEncounterLootPanel()
       id = itemId,
       name = Data and Data.getItemDisplayName(itemId),
     })
+    if dropCounts and dropCounts[itemId] and dropCounts[itemId] > 1 then
+      itemLabel = itemLabel .. string.format(" (x%d)", dropCounts[itemId])
+    end
     local countLabel = ""
     if needCount > 0 then
       countLabel = string.format("|cff00ff00(%d need)|r", needCount)

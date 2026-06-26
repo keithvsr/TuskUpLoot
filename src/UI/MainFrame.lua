@@ -268,11 +268,28 @@ function UI.ensureFrame()
 
   local detailLinkFS = detailHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   detailLinkFS:SetPoint("LEFT", itemIconBtn, "RIGHT", 10, 0)
-  detailLinkFS:SetPoint("RIGHT", detailHeader, "RIGHT", -60, 0)
+  detailLinkFS:SetPoint("RIGHT", detailHeader, "RIGHT", -170, 0)
   detailLinkFS:SetJustifyH("LEFT")
   detailLinkFS:SetJustifyV("MIDDLE")
   detailLinkFS:SetWordWrap(true)
   UI.detailLinkFS = detailLinkFS
+
+  local encounterLootToggleBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
+  encounterLootToggleBtn:SetSize(108, 22)
+  encounterLootToggleBtn:SetPoint("TOPRIGHT", detailHeader, "TOPRIGHT", -56, 0)
+  encounterLootToggleBtn:SetText("Full loot table")
+  encounterLootToggleBtn:Hide()
+  encounterLootToggleBtn:SetScript("OnClick", function()
+    if UI.encounterLootView == "actual" then
+      UI.encounterLootView = "full"
+    else
+      UI.encounterLootView = "actual"
+    end
+    if UI.renderEncounterLootPanel then
+      UI.renderEncounterLootPanel()
+    end
+  end)
+  UI.encounterLootToggleBtn = encounterLootToggleBtn
 
   local detailLinkHitBtn = CreateFrame("Button", nil, detailHeader)
   detailLinkHitBtn:SetPoint("TOPLEFT", detailLinkFS, "TOPLEFT", 0, 0)

@@ -160,6 +160,16 @@ local function updateTabVisibility()
     end
   end
 
+  if tab == "raids" and UI.encounterLootToggleBtn then
+    if UI.focusEncounterId then
+      UI.encounterLootToggleBtn:Show()
+    else
+      UI.encounterLootToggleBtn:Hide()
+    end
+  elseif UI.encounterLootToggleBtn then
+    UI.encounterLootToggleBtn:Hide()
+  end
+
   if tab ~= "items" and UI.detailBackBtn then
     UI.detailBackBtn:Hide()
   end

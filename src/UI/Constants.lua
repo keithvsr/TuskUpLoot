@@ -30,6 +30,7 @@ UI.expandedInstances = UI.expandedInstances or {}
 UI.focusInstanceId = UI.focusInstanceId or nil
 UI.returnContext = UI.returnContext or nil
 UI.focusEncounterId = UI.focusEncounterId or nil
+UI.encounterLootView = UI.encounterLootView or "actual"
 UI.charListSortBy = UI.charListSortBy or "name"
 UI.charListSortNameDescending = UI.charListSortNameDescending or false
 UI.charListSortClassDescending = UI.charListSortClassDescending or false
