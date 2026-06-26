@@ -356,22 +356,7 @@ local function handleCombatLog()
   end
 end
 
-local function getAllItemIds()
-  local itemIds = {}
-  local listItems = addon.DB.sortedItemIDs()
-  for _, itemId in ipairs(listItems) do
-    itemIds[#itemIds + 1] = itemId
-  end
-  local dropItems = addon.Data.getDropItemIds()
-  for _, itemId in ipairs(dropItems) do
-    itemIds[#itemIds + 1] = itemId
-  end
-  return itemIds
-end
-
 local function isValidLoot(locked, quality, threshold)
-  addon.chatPrint(string.format("locked: %s, quality: %s, threshold: %s", tostring(locked), quality, threshold))
-  -- return true
   return not locked and quality and threshold < quality
 end
 
@@ -442,19 +427,21 @@ local function handleAddonLoaded(...)
     addon.dbInitialized = true
   end
 
-  local itemIds = getAllItemIds()
+  local Util = addon.UI and addon.UI.Util
+  local itemIds = Util and Util.getAllItemIds and Util.getAllItemIds() or {}
   addon.totalItems = itemIds and #itemIds or 0
   if addon.totalItems > 0 then
-    addon.pendingItems = {}
-    for _, itemId in ipairs(itemIds) do
-      addon.pendingItems[itemId] = true
-    end
     addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
-    for _, itemId in ipairs(itemIds) do
-      C_Item.RequestLoadItemDataByID(itemId)
+    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
+      TuskUpLoot.ItemCache.preloadAll(itemIds, function()
+        addon.chatPrint("Item cache ready.")
+        if addon.UI and addon.UI.rebuildItemList then
+          addon.UI.rebuildItemList()
+        end
+      end)
     end
   else
-    addon.chatPrint("AddOn Initialized.")
+    addon.chatPrint("AddOn Initialized. No items to request.")
   end
 
   SLASH_TUSKUPLOOT1 = "/tul"
@@ -474,18 +461,6 @@ local function handleAddonLoaded(...)
   end
 
   updateLootMasterState()
-end
-
-local function handleItemDataLoadResult(...)
-  local itemId, success = ...
-  if addon.pendingItems and addon.pendingItems[itemId] then
-    addon.pendingItems[itemId] = nil
-    if next(addon.pendingItems) == nil then
-      addon.pendingItems = nil
-      addon.chatPrint("All item data requests completed.")
-      eventFrame:UnregisterEvent("ITEM_DATA_LOAD_RESULT")
-    end
-  end
 end
 
 local function handleZoneChangedNewArea()
@@ -532,15 +507,8 @@ local function handleLootReady(...)
   if not addon.State.IsLootMaster then
     return
   end
-  -- addon.chatPrint("Loot ready")
-
-  -- get total number of loot items and whether player is master looter
-  -- local numItems = GetNumLootItems()
   local lootInfo = GetLootInfo()
-  -- local numItems = #lootInfo
-  -- addon.chatPrint(numItems .. " items to loot (GetNumLootItems)")
-  -- addon.chatPrint(#lootInfo .. " num items in loot info (GetLootInfo)")
-  -- if isMasterLooter and numItems and numItems > 0 then
+
   -- get loot master threshold
   local lootThreshold = GetLootThreshold()
   local raidKeys = collectRaidMemberKeys()
@@ -604,8 +572,6 @@ end
 local function eventHandler(_, event, ...)
   if event == "ADDON_LOADED" then
     return handleAddonLoaded(...)
-  elseif event == "ITEM_DATA_LOAD_RESULT" then
-    return handleItemDataLoadResult(...)
   elseif event == "ZONE_CHANGED_NEW_AREA" then
     return handleZoneChangedNewArea()
   elseif event == "ENCOUNTER_START" then
@@ -630,7 +596,6 @@ local function eventHandler(_, event, ...)
 end
 
 eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("LOOT_READY")
 eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
