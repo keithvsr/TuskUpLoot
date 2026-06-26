@@ -16,6 +16,7 @@ Data/Encounters.lua
 Data/TierLinks.lua
 Data/Loot.lua
 DB/TuskUpLootDB.lua
+ItemCache.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
 # Sync/SyncCodec.lua
