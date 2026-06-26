@@ -94,9 +94,67 @@ local function persistMemoryClears(runKey, mapId, cleared)
   end
 end
 
+local function copyEncounterDrops(drops)
+  local out = {}
+  for encId, list in pairs(drops or {}) do
+    local copy = {}
+    for i, itemId in ipairs(list) do
+      copy[i] = itemId
+    end
+    out[encId] = copy
+  end
+  return out
+end
+
+local function persistMemoryDrops(runKey, mapId, drops)
+  if not runKey or not addon.DB or not addon.DB.appendEncounterDrops then
+    return
+  end
+  for encId, list in pairs(drops or {}) do
+    if list and #list > 0 then
+      addon.DB.appendEncounterDrops(runKey, mapId, encId, list)
+    end
+  end
+end
+
+local function appendDropsToState(encounterId, itemIds)
+  if not encounterId or not itemIds or #itemIds == 0 then
+    return
+  end
+  if not addon.State.EncounterDrops then
+    addon.State.EncounterDrops = {}
+  end
+  local list = addon.State.EncounterDrops[encounterId]
+  if not list then
+    list = {}
+    addon.State.EncounterDrops[encounterId] = list
+  end
+  for _, itemId in ipairs(itemIds) do
+    list[#list + 1] = itemId
+  end
+end
+
+-- Shared entry point for local LOOT_READY recording and future raid SendAddonMessage sync.
+-- Future: ML broadcasts drops via C_ChatInfo.SendAddonMessage("RAID", payload, "TuskUpLoot");
+-- receivers validate runKey and call this same function.
+local function mergeEncounterDrops(encounterId, itemIds)
+  appendDropsToState(encounterId, itemIds)
+
+  local runKey = addon.State.RaidRunKey
+  if runKey and addon.DB and addon.DB.appendEncounterDrops then
+    addon.DB.appendEncounterDrops(runKey, addon.State.InstanceId, encounterId, itemIds)
+  end
+
+  if addon.UI and addon.UI.focusEncounterId == encounterId and addon.UI.renderEncounterLootPanel then
+    addon.UI.renderEncounterLootPanel()
+  end
+end
+
 local function hydrateClearedEncounters()
   local memory = addon.State.ClearedEncounters or {}
+  local memoryDrops = addon.State.EncounterDrops or {}
   addon.State.ClearedEncounters = {}
+  addon.State.EncounterDrops = {}
 
   local runKey = addon.State.RaidRunKey
   if runKey and addon.DB and addon.DB.loadRaidRun then
@@ -107,6 +165,7 @@ local function hydrateClearedEncounters()
     if loaded.lastEncounter and not addon.State.LastEncounter then
       addon.State.LastEncounter = loaded.lastEncounter
     end
+    addon.State.EncounterDrops = copyEncounterDrops(loaded.drops)
   end
 
   for encId, val in pairs(memory) do
@@ -114,6 +173,15 @@ local function hydrateClearedEncounters()
       addon.State.ClearedEncounters[encId] = true
       if runKey then
         persistMemoryClears(runKey, addon.State.InstanceId, { [encId] = true })
+      end
+    end
+  end
+
+  for encId, list in pairs(memoryDrops) do
+    if list and #list > 0 then
+      appendDropsToState(encId, list)
+      if runKey then
+        addon.DB.appendEncounterDrops(runKey, addon.State.InstanceId, encId, list)
       end
     end
   end
@@ -165,15 +233,19 @@ local function applyRunInstanceCapture(runId)
   end
 
   local memory = addon.State.ClearedEncounters or {}
+  local memoryDrops = addon.State.EncounterDrops or {}
 
   if priorKey and priorKey ~= newKey then
     persistMemoryClears(priorKey, mapId, memory)
+    persistMemoryDrops(priorKey, mapId, memoryDrops)
     memory = {}
+    memoryDrops = {}
   end
 
   addon.State.RunInstanceId = runId
   addon.State.RaidRunKey = newKey
   addon.State.ClearedEncounters = memory
+  addon.State.EncounterDrops = memoryDrops
 
   hydrateClearedEncounters()
   unregisterNpcCaptureEvents()
@@ -214,6 +286,7 @@ local function clearSessionRaidState()
   addon.State.LastEncounter = nil
   addon.State.LastKilledBoss = nil
   addon.State.ClearedEncounters = {}
+  addon.State.EncounterDrops = {}
   unregisterNpcCaptureEvents()
   eventFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 end
@@ -228,6 +301,7 @@ local function enterRaidInstance(instanceId)
     addon.State.RunInstanceId = nil
     addon.State.RaidRunKey = nil
     addon.State.ClearedEncounters = {}
+    addon.State.EncounterDrops = {}
     registerNpcCaptureEvents()
   elseif not addon.State.RaidRunKey then
     registerNpcCaptureEvents()
@@ -471,6 +545,24 @@ local function handleLootReady(...)
   local lootThreshold = GetLootThreshold()
   local raidKeys = collectRaidMemberKeys()
   local Data = addon.Data
+
+  local encounterId = addon.State.LastEncounter
+  local cleared = addon.State.ClearedEncounters
+  if encounterId and cleared and cleared[encounterId] then
+    local collectedIds = {}
+    for itemIdx, _ in ipairs(lootInfo) do
+      local itemLink = GetLootSlotLink(itemIdx)
+      if itemLink then
+        local dropId = C_Item.GetItemIDForItemInfo(itemLink)
+        if dropId then
+          collectedIds[#collectedIds + 1] = dropId
+        end
+      end
+    end
+    if #collectedIds > 0 then
+      mergeEncounterDrops(encounterId, collectedIds)
+    end
+  end
 
   for itemIdx, itemInfo in ipairs(lootInfo) do
     -- local itemInfo = lootInfo[itemIdx]
