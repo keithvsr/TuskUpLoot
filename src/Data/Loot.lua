@@ -73,11 +73,16 @@ function Data.getEncounterLootIdsForSource(encounterId, sourceType, sourceId)
 end
 
 function Data.getItemDisplayName(itemId)
-  if C_Item and C_Item.GetItemInfo then
-    local name = select(1, C_Item.GetItemInfo(itemId))
-    if name then
-      return name
+  local ItemCache = TuskUpLoot.ItemCache
+  if ItemCache and ItemCache.get then
+    local cached = ItemCache.get(itemId)
+    if cached and cached.name then
+      return cached.name
     end
+  end
+  local name = C_Item.GetItemNameByID(itemId)
+  if name then
+    return name
   end
   local catalog = Data.Items and Data.Items[itemId]
   if catalog and catalog.name then
@@ -260,11 +265,13 @@ function Data.getItemNeedInfo(itemId)
 end
 
 local function requestItemDataRecursive(itemId, seen)
-  if not itemId or seen[itemId] or not C_Item or not C_Item.RequestLoadItemDataByID then
+  if not itemId or seen[itemId] then
     return
   end
   seen[itemId] = true
-  C_Item.RequestLoadItemDataByID(itemId)
+  if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.queue then
+    TuskUpLoot.ItemCache.queue(itemId)
+  end
 
   if Data.getNeedRollupItemIds then
     for _, linkedId in ipairs(Data.getNeedRollupItemIds(itemId)) do
