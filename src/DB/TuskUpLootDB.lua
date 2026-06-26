@@ -150,9 +150,14 @@ local function upsertItem(itemId, item)
   ensureSavedVar()
   assert(itemId, "item ID is required to insert/update item")
   if TuskUpLootDB.items[itemId] == nil then
-    -- request data if item is new to DB
-    C_Item.RequestLoadItemDataByID(itemId)
     TuskUpLootDB.items[itemId] = item
+    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.queue then
+      TuskUpLoot.ItemCache.queue(itemId, function()
+        if TuskUpLoot.UI and TuskUpLoot.UI.rebuildItemList then
+          TuskUpLoot.UI.rebuildItemList()
+        end
+      end)
+    end
   else
     local stored = TuskUpLootDB.items[itemId]
     if not stored.characters then
