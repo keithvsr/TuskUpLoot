@@ -7,13 +7,9 @@ local function itemMatchesFilter(itemId, item, needle)
   if needle == "" then
     return true
   end
-  local name
-  if C_Item.GetItemInfo then
-    name = select(1, C_Item.GetItemInfo(itemId))
-  end
-  name = name or (item and item.name) or ""
-  if name == "" and TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
-    name = TuskUpLoot.Data.getItemDisplayName(itemId) or ""
+  local name = Util.getItemDisplayName(itemId, item and item.name)
+  if name == "" or not name then
+    name = (item and item.name) or ""
   end
   return string.find(string.lower(name), needle, 1, true) ~= nil
 end
@@ -35,9 +31,11 @@ function UI.rebuildItemList()
   end
   container.buttons = container.buttons or {}
 
-  local items = TuskUpLoot.DB.getItems()
+  -- local items = TuskUpLoot.DB.getItems()
+  local items = Util.getAllItems()
   local needle = Util.filterNeedle()
-  local sortedIds = TuskUpLoot.DB.sortedItemIDs()
+  -- local sortedIds = TuskUpLoot.DB.sortedItemIDs()
+  local sortedIds = Util.getAllItemIds()
   local y = -6
   local btnHeight = 18
   local i = 0
@@ -46,7 +44,7 @@ function UI.rebuildItemList()
     local item = items[itemId]
     if item and not Util.isCosmeticItem(itemId) and itemMatchesFilter(itemId, item, needle) then
       i = i + 1
-      local itemLine = Util.formatItemLine(item)
+      local itemLine = Util.formatItemLine(itemId, item.name)
 
       local btn = Util.getOrCreateListButton(container, container.buttons, i, btnHeight)
       btn:ClearAllPoints()

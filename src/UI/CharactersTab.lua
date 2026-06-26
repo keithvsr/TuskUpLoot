@@ -318,10 +318,7 @@ function UI.renderCharacterPanel()
             gearRow.slotFS:SetText("|cff888888" .. entry.slotLabel .. "|r")
 
             local meta = db.items and db.items[id]
-            local itemLine = Util.formatItemLine(meta or {
-              id = id,
-              name = TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName(id),
-            })
+            local itemLine = Util.formatItemLine(id, (meta and meta.name) or nil)
             gearRow.itemText:SetText(itemLine)
 
             local charMeta = meta and meta.characters and meta.characters[selectedKey]

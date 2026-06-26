@@ -91,11 +91,59 @@ function UI.dismissAllFrames()
   end
 end
 
+function Util.getCachedItem(itemId)
+  local ItemCache = TuskUpLoot.ItemCache
+  if ItemCache and ItemCache.get then
+    return ItemCache.get(itemId)
+  end
+  return nil
+end
+
+function Util.getItemDisplayName(itemId, fallbackName)
+  local cached = Util.getCachedItem(itemId)
+  if cached and cached.name then
+    return cached.name
+  end
+  if fallbackName and fallbackName ~= "" then
+    return fallbackName
+  end
+  local DB = TuskUpLoot.DB
+  if DB and DB.getItem then
+    local item = DB.getItem(itemId)
+    if item and item.name then
+      return item.name
+    end
+  end
+  if TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
+    return TuskUpLoot.Data.getItemDisplayName(itemId)
+  end
+  return nil
+end
+
+function Util.getItemDisplayLink(itemId, fallbackName)
+  local cached = Util.getCachedItem(itemId)
+  if cached and cached.link then
+    return cached.link
+  end
+  local name = Util.getItemDisplayName(itemId, fallbackName)
+  if name then
+    return "|cffffffff[" .. name .. "]|r"
+  end
+  if itemId then
+    return "|cffffffff[Item " .. tostring(itemId) .. "]|r"
+  end
+  return nil
+end
+
 function Util.insertItemLinkIntoChat(itemId)
-  if not itemId or not C_Item or not C_Item.GetItemInfo then
+  if not itemId then
     return false
   end
-  local _, itemLink = C_Item.GetItemInfo(itemId)
+  local cached = Util.getCachedItem(itemId)
+  local itemLink = cached and cached.link
+  if not itemLink and C_Item and C_Item.GetItemInfo then
+    _, itemLink = C_Item.GetItemInfo(itemId)
+  end
   if not itemLink or itemLink == "" then
     return false
   end
@@ -181,7 +229,14 @@ function Util.refreshItemIconButton(btn, itemId)
     return
   end
   btn.itemId = itemId
-  local _, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemId)
+  local cached = Util.getCachedItem(itemId)
+  local itemQuality = cached and cached.quality
+  local itemTexture = cached and cached.icon
+  if (not itemQuality or not itemTexture) and C_Item and C_Item.GetItemInfo then
+    local _, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemId)
+    itemQuality = itemQuality or quality
+    itemTexture = itemTexture or texture
+  end
   if btn.iconTex then
     btn.iconTex:SetTexture(itemTexture)
   end
@@ -193,22 +248,28 @@ function Util.refreshItemIconButton(btn, itemId)
   end
 end
 
-function Util.formatItemLine(item)
-  if not item or not item.id then
+local function resolveFormatItemLineArgs(itemIdOrSpec, itemName)
+  if type(itemIdOrSpec) == "table" then
+    return itemIdOrSpec.id, itemIdOrSpec.name
+  end
+  return itemIdOrSpec, itemName
+end
+
+function Util.formatItemLine(itemIdOrSpec, itemName)
+  local itemId, name = resolveFormatItemLineArgs(itemIdOrSpec, itemName)
+  if not itemId then
     return "- (invalid item)"
   end
 
-  local _, itemLink
-  if C_Item.GetItemInfo then
-    _, itemLink = C_Item.GetItemInfo(item.id)
+  name = Util.getItemDisplayName(itemId, name)
+  local cached = Util.getCachedItem(itemId)
+  if cached and cached.link then
+    return cached.link
   end
-
-  local name = item.name
-  if not name and TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
-    name = TuskUpLoot.Data.getItemDisplayName(item.id)
+  if name then
+    return "[" .. name .. "]"
   end
-
-  return itemLink or (name and ("[" .. name .. "]")) or ("[Item " .. tostring(item.id) .. "]")
+  return "[Item " .. tostring(itemId) .. "]"
 end
 
 local COSMETIC_SLOTS = {
@@ -238,7 +299,13 @@ function Util.isCosmeticItem(itemId)
   end
 
   if C_Item and C_Item.GetItemInfo then
-    local equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    local equipLoc
+    local cached = Util.getCachedItem(itemId)
+    if cached and cached.equipLoc then
+      equipLoc = cached.equipLoc
+    else
+      equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    end
     if equipLoc and COSMETIC_EQUIP_LOCS[equipLoc] then
       return true
     end
@@ -367,7 +434,13 @@ function Util.resolveSlotKey(itemId)
   end
 
   if C_Item and C_Item.GetItemInfo then
-    local equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    local equipLoc
+    local cached = Util.getCachedItem(itemId)
+    if cached and cached.equipLoc then
+      equipLoc = cached.equipLoc
+    else
+      equipLoc = select(9, C_Item.GetItemInfo(itemId))
+    end
     if equipLoc and EQUIP_LOC_TO_SLOT_KEY[equipLoc] then
       return EQUIP_LOC_TO_SLOT_KEY[equipLoc]
     end
@@ -717,4 +790,42 @@ function Util.getOrCreateRaidRow(container, rows, index)
     rows[index] = row
   end
   return row
+end
+
+function Util.getAllItemIds()
+  local itemIds = {}
+  local seen = {}
+  local listItems = TuskUpLoot.DB.sortedItemIDs()
+  for _, itemId in ipairs(listItems) do
+    if not seen[itemId] then
+      seen[itemId] = true
+      itemIds[#itemIds + 1] = itemId
+    end
+  end
+  local dropItems = TuskUpLoot.Data.getDropItemIds()
+  for _, itemId in ipairs(dropItems) do
+    if not seen[itemId] then
+      seen[itemId] = true
+      itemIds[#itemIds + 1] = itemId
+    end
+  end
+  table.sort(itemIds, function(a, b)
+    return a < b
+  end)
+  return itemIds
+end
+
+function Util.getAllItems()
+  local items = {}
+  local dbItems = TuskUpLoot.DB.getItems()
+  for itemId, item in pairs(dbItems) do
+    items[itemId] = item
+  end
+  local dropItems = TuskUpLoot.Data.Items or {}
+  for itemId, item in pairs(dropItems) do
+    if not items[itemId] then
+      items[itemId] = item
+    end
+  end
+  return items
 end

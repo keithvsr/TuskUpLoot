@@ -334,14 +334,7 @@ function UI.renderSelectedItem()
       UI.itemIconBtn:Show()
       Util.bindItemDetailShiftLinks(selectedItemId)
     end
-    local _, itemLink = C_Item.GetItemInfo(selectedItemId)
-    if not itemLink and Data and Data.getItemDisplayName then
-      local name = Data.getItemDisplayName(selectedItemId)
-      if name then
-        itemLink = "|cffffffff[" .. name .. "]|r"
-      end
-    end
-    UI.detailLinkFS:SetText(itemLink or ("|cffffffff[Item " .. tostring(selectedItemId) .. "]|r"))
+    UI.detailLinkFS:SetText(Util.getItemDisplayLink(selectedItemId))
     UI.needsTitle:SetText("No characters linked to this item in saved data.")
     clearNeedsList()
     UI.needsListContainer:Hide()
@@ -371,19 +364,7 @@ function UI.renderSelectedItem()
     Util.bindItemDetailShiftLinks(selectedItemId)
   end
 
-  local _, itemLink = C_Item.GetItemInfo(selectedItemId)
-
-  if not itemLink and item and item.name then
-    itemLink = "|cffffffff[" .. item.name .. "]|r"
-  elseif not itemLink and Data and Data.getItemDisplayName then
-    local name = Data.getItemDisplayName(selectedItemId)
-    if name then
-      itemLink = "|cffffffff[" .. name .. "]|r"
-    end
-  elseif not itemLink then
-    itemLink = "|cffffffff[Item " .. tostring(selectedItemId) .. "]|r"
-  end
-  UI.detailLinkFS:SetText(itemLink)
+  UI.detailLinkFS:SetText(Util.getItemDisplayLink(selectedItemId, item and item.name))
 
   if not needInfo or ((#needInfo.needs == 0) and (#needInfo.has == 0) and not hasRewardNeeds) then
     UI.needsTitle:SetText("No characters linked to this item in saved data.")
