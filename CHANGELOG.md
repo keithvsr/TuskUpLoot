@@ -1,21 +1,31 @@
 # TuskUpLoot
 
+## 1.2.0
+
+#### Actual Drop Capturing & Tracking
+
+- Listed and non-listed items share display logic
+- Item Cache for links and tooltips for all referenced Items
+- Attempt capture of actual loot drops (master looter only)
+- Persist drop data with cleared encounters
+
+
 ## 1.1.0
 
-- Open addon to use outside of `<Tusk Up>` guild
+- Open addon to users outside of `<Tusk Up>` guild
 - Event handler refactor & bug fixes
 
 
 ## 1.0.3
 
-Encounter tracking fixes
+#### Encounter tracking fixes
 
 - Addresses bug with how instance ids and unique zone ids were being handled
 - Raid lockouts now correctly identify as individual runs
 
 ## 1.0.2
 
-Manual Character Ordering.
+#### Manual Character Ordering.
 
 - Adds third tabular view to Character list
 - Allow manually ordering the list of Characters within this new view
@@ -24,7 +34,7 @@ Manual Character Ordering.
 
 ## 1.0.1
 
-Character List Ordering.
+#### Character List Ordering.
 
 - Fix Character name ordering to be case-insensitive
 - Add grouping by Character Class
@@ -33,7 +43,7 @@ Character List Ordering.
 
 ## 1.0.0
 
-First public release.
+#### First public release.
 
 - TBC Anniversary support (`Interface 20505`)
 - Import BIS gear sets from sixtyupgrades JSON
