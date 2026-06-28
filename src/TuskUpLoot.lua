@@ -38,49 +38,49 @@ local function guidParts(guid)
   return parts
 end
 
-local function isCreatureGuid(guidPart)
-  return guidPart == "Creature"
+local function isUnitGuidWithRunId(unitType)
+  return unitType == "Creature" or unitType == "GameObject"
 end
 
--- Creature-0-ServerID-InstanceID-ZoneUID-SpawnUID (see UnitGUID wiki)
-local function parseRunInstanceIdFromCreatureGuid(guid)
+-- [unitType]-0-[serverID]-[instanceID]-[zoneUID]-[ID]-[spawnUID]
+local function parseRunInstanceIdFromUnitGuid(guid)
   local parts = guidParts(guid)
-  -- first part of the GUID shows type of unit
-  if not isCreatureGuid(parts[1]) then return nil end
-  local instanceToken = nil
-  if parts[2] == "0" and #parts >= 4 then
-    instanceToken = parts[5]
-    -- FINDME: unclear on when this is used, leaving commented for now
-    -- elseif #parts >= 3 then
-    --   instanceToken = parts[3]
-  end
-  if not instanceToken then
+  if not isUnitGuidWithRunId(parts[1]) then
     return nil
   end
-  local runId = tonumber(instanceToken, 10)
+  if parts[2] ~= "0" or #parts < 5 then
+    return nil
+  end
+  local runId = tonumber(parts[5], 10)
   if runId and runId ~= 0 then
     return runId
   end
   return nil
 end
 
-local function getCreatureIdFromGuid(guid)
-  if not isCreatureGuid(guid) then
-    return nil
-  end
+local function parseLootSourceFromGuid(guid)
   local parts = guidParts(guid)
-  local spawnToken = parts[#parts]
-  if not spawnToken then
+  if parts[2] ~= "0" or #parts < 6 then
     return nil
   end
-  return tonumber(spawnToken, 16) or tonumber(spawnToken, 10)
+  local unitType = parts[1]
+  local sourceId = tonumber(parts[6], 10)
+  if not sourceId then
+    return nil
+  end
+  if unitType == "Creature" then
+    return { sourceType = "npc", sourceId = sourceId }
+  elseif unitType == "GameObject" then
+    return { sourceType = "object", sourceId = sourceId }
+  end
+  return nil
 end
 
 local function runInstanceIdFromUnit(unit)
   if not unit or not UnitExists(unit) then
     return nil
   end
-  return parseRunInstanceIdFromCreatureGuid(UnitGUID(unit))
+  return parseRunInstanceIdFromUnitGuid(UnitGUID(unit))
 end
 
 local function persistMemoryClears(runKey, mapId, cleared)
@@ -147,6 +147,10 @@ local function mergeEncounterDrops(encounterId, itemIds)
 
   if addon.UI and addon.UI.focusEncounterId == encounterId and addon.UI.renderEncounterLootPanel then
     addon.UI.renderEncounterLootPanel()
+  end
+  if addon.UI and addon.UI.rebuildRaidList
+      and addon.Data and encounterId == addon.Data.TRASH_DROP_BUCKET then
+    addon.UI.rebuildRaidList()
   end
 end
 
@@ -240,6 +244,7 @@ local function applyRunInstanceCapture(runId)
     persistMemoryDrops(priorKey, mapId, memoryDrops)
     memory = {}
     memoryDrops = {}
+    addon.State.AnnouncedLootBySource = {}
   end
 
   addon.State.RunInstanceId = runId
@@ -270,8 +275,8 @@ local function tryCaptureRunInstanceFromNearbyNpcs()
   return false
 end
 
-local function tryCaptureRunInstanceFromCreatureGuid(guid)
-  local runId = parseRunInstanceIdFromCreatureGuid(guid)
+local function tryCaptureRunInstanceFromUnitGuid(guid)
+  local runId = parseRunInstanceIdFromUnitGuid(guid)
   if runId then
     return applyRunInstanceCapture(runId)
   end
@@ -287,6 +292,7 @@ local function clearSessionRaidState()
   addon.State.LastKilledBoss = nil
   addon.State.ClearedEncounters = {}
   addon.State.EncounterDrops = {}
+  addon.State.AnnouncedLootBySource = {}
   unregisterNpcCaptureEvents()
   eventFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 end
@@ -302,6 +308,7 @@ local function enterRaidInstance(instanceId)
     addon.State.RaidRunKey = nil
     addon.State.ClearedEncounters = {}
     addon.State.EncounterDrops = {}
+    addon.State.AnnouncedLootBySource = {}
     registerNpcCaptureEvents()
   elseif not addon.State.RaidRunKey then
     registerNpcCaptureEvents()
@@ -344,10 +351,11 @@ local function handleCombatLog()
   ---@diagnostic disable-next-line: undefined-global
   local _, subevent, _, _, _, _, _, destGuid = CombatLogGetCurrentEventInfo()
   if subevent == "UNIT_DIED" and destGuid then
-    if tryCaptureRunInstanceFromCreatureGuid(destGuid) then
-      -- run id captured from boss death
+    if tryCaptureRunInstanceFromUnitGuid(destGuid) then
+      -- run id captured from unit death
     end
-    local creatureId = getCreatureIdFromGuid(destGuid)
+    local parsed = parseLootSourceFromGuid(destGuid)
+    local creatureId = parsed and parsed.sourceType == "npc" and parsed.sourceId
     local creature = creatureId and TuskUpLoot.Data.NPCs and TuskUpLoot.Data.NPCs[creatureId]
     if creature and addon.State.EncounterId then
       addon.State.LastKilledBoss = creatureId
@@ -503,70 +511,131 @@ end
 -- GROUP_ROSTER_UPDATE
 -- PLAYER_ROLES_ASSIGNED
 
-local function handleLootReady(...)
-  if not addon.State.IsLootMaster then
+local function getPrimaryLootSourceGuid(lootInfo)
+  for itemIdx = 1, #(lootInfo or {}) do
+    local guid = GetLootSourceInfo(itemIdx)
+    if guid and guid ~= "" then
+      return guid
+    end
+  end
+  return nil
+end
+
+local function getSourceLedger(sourceGuid)
+  if not sourceGuid then
+    return nil
+  end
+  if not addon.State.AnnouncedLootBySource then
+    addon.State.AnnouncedLootBySource = {}
+  end
+  local ledger = addon.State.AnnouncedLootBySource[sourceGuid]
+  if not ledger then
+    ledger = { items = {} }
+    addon.State.AnnouncedLootBySource[sourceGuid] = ledger
+  end
+  return ledger
+end
+
+local function sendLootNeedMessage(msg, isLootMaster)
+  if isLootMaster then
+    C_ChatInfo.SendChatMessage(msg, "RAID")
+  end
+  -- addon.chatPrint(msg)  -- uncomment locally to debug without ML/RL
+end
+
+local function handleLootOpened(...)
+  if not addon.State.InstanceId then
     return
   end
-  local lootInfo = GetLootInfo()
 
-  -- get loot master threshold
+  local isLootMaster = addon.State.IsLootMaster or false
+  local lootInfo = GetLootInfo()
   local lootThreshold = GetLootThreshold()
   local raidKeys = collectRaidMemberKeys()
   local Data = addon.Data
 
-  local encounterId = addon.State.LastEncounter
-  local cleared = addon.State.ClearedEncounters
-  if encounterId and cleared and cleared[encounterId] then
-    local collectedIds = {}
-    for itemIdx, _ in ipairs(lootInfo) do
-      local itemLink = GetLootSlotLink(itemIdx)
-      if itemLink then
-        local dropId = C_Item.GetItemIDForItemInfo(itemLink)
-        if dropId then
-          collectedIds[#collectedIds + 1] = dropId
-        end
-      end
-    end
-    if #collectedIds > 0 then
-      mergeEncounterDrops(encounterId, collectedIds)
-    end
+  local sourceGuid = getPrimaryLootSourceGuid(lootInfo)
+  if not sourceGuid then
+    return
   end
 
+  local ledger = getSourceLedger(sourceGuid)
+  if not ledger or ledger.complete then
+    -- addon.chatPrint("source already complete: " .. tostring(sourceGuid))
+    return
+  end
+
+  local parsed = parseLootSourceFromGuid(sourceGuid)
+  local dropBucket = Data.TRASH_DROP_BUCKET
+  if parsed then
+    dropBucket = Data.resolveDropBucket(
+      addon.State.InstanceId,
+      parsed.sourceType,
+      parsed.sourceId,
+      addon.State.ClearedEncounters
+    )
+  end
+  -- addon.chatPrint(string.format(
+  --   "loot source %s type=%s id=%s bucket=%s",
+  --   tostring(sourceGuid),
+  --   parsed and parsed.sourceType or "?",
+  --   parsed and tostring(parsed.sourceId) or "?",
+  --   tostring(dropBucket)
+  -- ))
+
+  local collectedSlots = {}
   for itemIdx, itemInfo in ipairs(lootInfo) do
-    -- local itemInfo = lootInfo[itemIdx]
-    -- local itemInfoAtIdx = lootInfo[itemIdx]
-    -- if itemInfoAtIdx then
-    addon.chatPrint(itemInfo.item .. " item info at idx (GetLootInfo)")
-    -- end
     local itemLink = GetLootSlotLink(itemIdx)
-    -- double check item is valid and returned data
-    if itemLink and isValidLoot(itemInfo.locked, itemInfo.quality, lootThreshold) then
-      -- local _, _, _, _, quality, locked = GetLootSlotInfo(itemIdx)
-      -- if item is lootable
-      -- addon.chatPrint(itemLink .. " is valid loot")
-      -- addon.chatPrint(itemLink)
-      -- C_ChatInfo.SendChatMessage(itemLink, "PARTY")
-      local itemId = C_Item.GetItemIDForItemInfo(itemLink)
-      -- addon.chatPrint(string.format("Item ID: %s", itemId))
-
-      if itemId and Data and Data.getItemNeedInfo then
-        local needInfo = Data.getItemNeedInfo(itemId)
-        local neededBy = filterNeedInfoToRaid(needInfo, raidKeys)
-        if #neededBy > 0 then
-          C_ChatInfo.SendChatMessage(
-            string.format("%s - needed by %s", itemLink, table.concat(neededBy, ", ")),
-            "RAID"
-          )
-        else
-          C_ChatInfo.SendChatMessage(
-            string.format("%s - not needed by any raid member", itemLink),
-            "RAID"
-          )
-        end
+    if itemLink then
+      local dropId = C_Item.GetItemIDForItemInfo(itemLink)
+      if dropId then
+        collectedSlots[#collectedSlots + 1] = {
+          itemId = dropId,
+          itemLink = itemLink,
+          locked = itemInfo.locked,
+          quality = itemInfo.quality,
+        }
       end
-      -- end
     end
   end
+
+  if #collectedSlots == 0 then
+    ledger.complete = true
+    return
+  end
+
+  local collectedIds = {}
+  for _, slot in ipairs(collectedSlots) do
+    collectedIds[#collectedIds + 1] = slot.itemId
+  end
+
+  if isLootMaster then
+    mergeEncounterDrops(dropBucket, collectedIds)
+  else
+    -- addon.chatPrint("skipped record (not loot master)")
+  end
+
+  for _, slot in ipairs(collectedSlots) do
+    local dropId = slot.itemId
+    if ledger.items[dropId] then
+      -- addon.chatPrint("item already announced: " .. tostring(dropId))
+    elseif not Data.isRaidBroadcastExcluded(dropId)
+        and isValidLoot(slot.locked, slot.quality, lootThreshold)
+        and Data.getItemNeedInfo then
+      local needInfo = Data.getItemNeedInfo(dropId)
+      local neededBy = filterNeedInfoToRaid(needInfo, raidKeys)
+      local msg
+      if #neededBy > 0 then
+        msg = string.format("%s - needed by %s", slot.itemLink, table.concat(neededBy, ", "))
+      else
+        msg = string.format("%s - not needed by any raid member", slot.itemLink)
+      end
+      sendLootNeedMessage(msg, isLootMaster)
+      ledger.items[dropId] = true
+    end
+  end
+
+  ledger.complete = true
 end
 
 local function eventHandler(_, event, ...)
@@ -586,8 +655,8 @@ local function eventHandler(_, event, ...)
     if addon.State.InstanceId then
       handleCombatLog()
     end
-  elseif event == "LOOT_READY" then
-    return handleLootReady(...)
+  elseif event == "LOOT_OPENED" then
+    return handleLootOpened(...)
   elseif event == "PARTY_LOOT_METHOD_CHANGED"
       or event == "GROUP_ROSTER_UPDATE"
       or event == "PLAYER_ROLES_ASSIGNED" then
@@ -597,7 +666,7 @@ end
 
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-eventFrame:RegisterEvent("LOOT_READY")
+eventFrame:RegisterEvent("LOOT_OPENED")
 eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")

@@ -55,6 +55,11 @@ local function updateEncounterLootToggle()
     btn:Hide()
     return
   end
+  local trashBucket = TuskUpLoot.Data and TuskUpLoot.Data.TRASH_DROP_BUCKET
+  if trashBucket and UI.focusEncounterId == trashBucket then
+    btn:Hide()
+    return
+  end
   btn:Show()
   if UI.encounterLootView == "full" then
     btn:SetText("Actual drops")
@@ -66,7 +71,8 @@ end
 local function selectEncounter(encounterId)
   UI.focusEncounterId = encounterId
   UI.encounterLootView = "actual"
-  if TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
+  local trashBucket = TuskUpLoot.Data and TuskUpLoot.Data.TRASH_DROP_BUCKET
+  if encounterId ~= trashBucket and TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
     TuskUpLoot.Data.requestEncounterItemData(encounterId)
   end
   UI.rebuildRaidList()
@@ -114,6 +120,7 @@ function UI.renderEncounterLootPanel()
 
   local focusEnc = UI.focusEncounterId
   local Data = TuskUpLoot.Data
+  local trashBucket = Data and Data.TRASH_DROP_BUCKET
 
   if not focusEnc then
     if UI.detailLinkFS then
@@ -126,8 +133,13 @@ function UI.renderEncounterLootPanel()
   end
 
   local encounter = Data and Data.Encounters and Data.Encounters[focusEnc]
+  local isTrash = trashBucket and focusEnc == trashBucket
   if UI.detailLinkFS then
-    UI.detailLinkFS:SetText(encounter and (encounter.name or ("Encounter " .. tostring(focusEnc))) or "")
+    if isTrash then
+      UI.detailLinkFS:SetText("Trash")
+    else
+      UI.detailLinkFS:SetText(encounter and (encounter.name or ("Encounter " .. tostring(focusEnc))) or "")
+    end
   end
   updateEncounterLootToggle()
 
@@ -136,7 +148,15 @@ function UI.renderEncounterLootPanel()
   local emptyMessage = "No drops recorded yet."
   if Data then
     local state = Util.getRaidState()
-    if UI.encounterLootView == "full" then
+    if isTrash then
+      if UI.encounterLootView == "full" then
+        lootIds = {}
+        emptyMessage = "No catalog for trash."
+      else
+        local actualDrops = state.EncounterDrops and state.EncounterDrops[trashBucket] or {}
+        lootIds, dropCounts = aggregateDropCounts(actualDrops)
+      end
+    elseif UI.encounterLootView == "full" then
       lootIds = Data.getEncounterLootIds(focusEnc)
       emptyMessage = "No loot for this encounter."
     else
@@ -299,6 +319,30 @@ function UI.rebuildRaidList()
             encRow:Show()
             y = y - C.ROW_HEIGHT
           end
+        end
+
+        local trashBucket = Data.TRASH_DROP_BUCKET
+        local trashDrops = trashBucket and state.EncounterDrops and state.EncounterDrops[trashBucket] or {}
+        if instanceId == state.InstanceId and trashBucket and #trashDrops > 0 then
+          rowIndex = rowIndex + 1
+          local trashRow = Util.getOrCreateRaidRow(container, rows, rowIndex)
+          local trashLabel = "  • Trash"
+          if trashBucket == UI.focusEncounterId then
+            trashLabel = "|cffffff00" .. trashLabel .. "|r"
+          end
+
+          trashRow:ClearAllPoints()
+          trashRow:SetPoint("TOPLEFT", container, "TOPLEFT", C.INDENT_ENCOUNTER, y)
+          trashRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+          trashRow.text:SetPoint("LEFT", C.INDENT_ENCOUNTER + 4, 0)
+
+          local trashCapture = trashBucket
+          trashRow:SetScript("OnClick", function()
+            selectEncounter(trashCapture)
+          end)
+          trashRow.text:SetText(trashLabel)
+          trashRow:Show()
+          y = y - C.ROW_HEIGHT
         end
       end
     end

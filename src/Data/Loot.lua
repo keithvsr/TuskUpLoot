@@ -91,6 +91,48 @@ function Data.getItemDisplayName(itemId)
   return nil
 end
 
+Data.TRASH_DROP_BUCKET = "trash"
+
+Data.RAID_BROADCAST_EXCLUDED_ITEMS = {
+  [29434] = true, -- Badge of Justice
+  [30183] = true, -- Nether Vortex
+}
+
+function Data.isRaidBroadcastExcluded(itemId)
+  return itemId and Data.RAID_BROADCAST_EXCLUDED_ITEMS[itemId] or false
+end
+
+function Data.findEncounterForSource(instanceId, sourceType, sourceId)
+  if not instanceId or not sourceType or not sourceId then
+    return nil
+  end
+  for encId, enc in pairs(Data.Encounters or {}) do
+    if enc.instance_id == instanceId then
+      for _, source in ipairs(enc.loot or {}) do
+        local id = source.type == "npc" and source.npc_id or source.object_id
+        if source.type == sourceType and id == sourceId then
+          return encId
+        end
+      end
+    end
+  end
+  return nil
+end
+
+function Data.resolveDropBucket(instanceId, sourceType, sourceId, clearedEncounters)
+  local encounterId = Data.findEncounterForSource(instanceId, sourceType, sourceId)
+  if not encounterId then
+    return Data.TRASH_DROP_BUCKET
+  end
+  if not clearedEncounters or not next(clearedEncounters) then
+    return Data.TRASH_DROP_BUCKET
+  end
+  if not clearedEncounters[encounterId] then
+    return Data.TRASH_DROP_BUCKET
+  end
+  return encounterId
+end
+
 local function mergeGearSetRow(dest, gs)
   local key = gs.key
   for _, existing in ipairs(dest) do
