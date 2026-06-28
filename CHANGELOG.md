@@ -1,5 +1,13 @@
 # TuskUpLoot
 
+## 1.2.1
+
+#### Better Looting Handling
+
+- Trash loot should now be properly accounted for
+- Items dropped should only be announced once
+
+
 ## 1.2.0
 
 #### Actual Drop Capturing & Tracking
