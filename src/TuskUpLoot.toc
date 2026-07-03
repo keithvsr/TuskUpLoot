@@ -19,11 +19,7 @@ DB/TuskUpLootDB.lua
 ItemCache.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
-# Sync/SyncCodec.lua
-# Sync/SyncPayload.lua
-# Sync/SyncProtocol.lua
-# Sync/SyncTransport.lua
-# Sync/Sync.lua
+Net/TuskUpLootNet.lua
 UI/TuskUpLootUI.lua
 UI/Constants.lua
 UI/Util.lua
