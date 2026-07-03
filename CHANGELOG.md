@@ -1,5 +1,12 @@
 # TuskUpLoot
 
+## 1.3.0
+
+#### Addon Networking
+
+- Master Looter broadcast loot drops from encounter
+- Marked items as acquired broadcasts to raid/party/guild members
+
 ## 1.2.1
 
 #### Better Looting Handling
