@@ -105,6 +105,9 @@ local function renderNeedsList(needsRows, selectedItemId)
       local markItemId = row.markItemId or selectedItemId
       fr.markBtn:SetScript("OnClick", function()
         TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
+        if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
+          TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
+        end
         UI.renderSelectedItem()
       end)
     end
@@ -234,6 +237,9 @@ local function renderTierTokenNeedsList(rewardGroups)
         local markItemId = row.markItemId or group.itemId
         fr.markBtn:SetScript("OnClick", function()
           TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
+          if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
+            TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
+          end
           UI.renderSelectedItem()
         end)
       end
@@ -293,7 +299,7 @@ function UI.renderSelectedItem()
   local selectedItemId = UI.selectedItemId
   local item = selectedItemId and DB and DB.getItem(selectedItemId)
   local needInfo = (selectedItemId and Data and Data.getItemNeedInfo)
-    and Data.getItemNeedInfo(selectedItemId)
+      and Data.getItemNeedInfo(selectedItemId)
   local rewardGroups = needInfo and needInfo.rewardGroups
   local hasRewardNeeds = needInfo and needInfo.hasRewardNeeds
   local hasRollup = needInfo and (

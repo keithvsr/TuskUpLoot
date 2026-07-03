@@ -137,21 +137,25 @@ end
 -- Shared entry point for local LOOT_READY recording and future raid SendAddonMessage sync.
 -- Future: ML broadcasts drops via C_ChatInfo.SendAddonMessage("RAID", payload, "TuskUpLoot");
 -- receivers validate runKey and call this same function.
-local function mergeEncounterDrops(encounterId, itemIds)
-  appendDropsToState(encounterId, itemIds)
+local function mergeEncounterDrops(dropBucket, itemIds)
+  appendDropsToState(dropBucket, itemIds)
 
   local runKey = addon.State.RaidRunKey
   if runKey and addon.DB and addon.DB.appendEncounterDrops then
-    addon.DB.appendEncounterDrops(runKey, addon.State.InstanceId, encounterId, itemIds)
+    addon.DB.appendEncounterDrops(runKey, addon.State.InstanceId, dropBucket, itemIds)
   end
 
-  if addon.UI and addon.UI.focusEncounterId == encounterId and addon.UI.renderEncounterLootPanel then
+  if addon.UI and addon.UI.focusEncounterId == dropBucket and addon.UI.renderEncounterLootPanel then
     addon.UI.renderEncounterLootPanel()
   end
   if addon.UI and addon.UI.rebuildRaidList
-      and addon.Data and encounterId == addon.Data.TRASH_DROP_BUCKET then
+      and addon.Data and dropBucket == addon.Data.TRASH_DROP_BUCKET then
     addon.UI.rebuildRaidList()
   end
+end
+
+function addon.mergeDrops(dropBucket, itemIds)
+  mergeEncounterDrops(dropBucket, itemIds)
 end
 
 local function hydrateClearedEncounters()
@@ -435,11 +439,16 @@ local function handleAddonLoaded(...)
     addon.dbInitialized = true
   end
 
+  local networked = false
+  if addon.Net and addon.Net.init then
+    addon.Net.init()
+    networked = true
+  end
+
   local Util = addon.UI and addon.UI.Util
   local itemIds = Util and Util.getAllItemIds and Util.getAllItemIds() or {}
   addon.totalItems = itemIds and #itemIds or 0
   if addon.totalItems > 0 then
-    addon.chatPrint("AddOn Initialized. Requesting item data for " .. tostring(addon.totalItems) .. " items.")
     if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
       TuskUpLoot.ItemCache.preloadAll(itemIds, function()
         addon.chatPrint("Item cache ready.")
@@ -448,6 +457,9 @@ local function handleAddonLoaded(...)
         end
       end)
     end
+    local suffix = networked and " and Networked." or "."
+    addon.chatPrint("AddOn Initialized" .. suffix ..
+      " Data for " .. tostring(addon.totalItems) .. " items requested.")
   else
     addon.chatPrint("AddOn Initialized. No items to request.")
   end
@@ -469,6 +481,13 @@ local function handleAddonLoaded(...)
   end
 
   updateLootMasterState()
+end
+
+local function handleChatMessageAddon(...)
+  local prefix, message, distribution, sender = ...
+  if addon.Net and addon.Net.handleMessage then
+    addon.Net.handleMessage(prefix, message, distribution, sender)
+  end
 end
 
 local function handleZoneChangedNewArea()
@@ -611,6 +630,9 @@ local function handleLootOpened(...)
 
   if isLootMaster then
     mergeEncounterDrops(dropBucket, collectedIds)
+    if addon.Net and addon.Net.broadcastLootDrop then
+      addon.Net.broadcastLootDrop(dropBucket, collectedIds)
+    end
   else
     -- addon.chatPrint("skipped record (not loot master)")
   end
@@ -641,6 +663,8 @@ end
 local function eventHandler(_, event, ...)
   if event == "ADDON_LOADED" then
     return handleAddonLoaded(...)
+  elseif event == "CHAT_MSG_ADDON" then
+    return handleChatMessageAddon(...)
   elseif event == "ZONE_CHANGED_NEW_AREA" then
     return handleZoneChangedNewArea()
   elseif event == "ENCOUNTER_START" then
@@ -665,6 +689,7 @@ local function eventHandler(_, event, ...)
 end
 
 eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("LOOT_OPENED")
 eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
