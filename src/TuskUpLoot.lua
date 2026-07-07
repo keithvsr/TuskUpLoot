@@ -27,6 +27,14 @@ local NPC_CAPTURE_UNITS = {
   "boss5",
 }
 
+local function getFullPlayerName()
+  local playerName, playerRealm = UnitFullName("player")
+  if not playerName or not playerRealm then
+    return nil
+  end
+  return playerName .. "-" .. playerRealm
+end
+
 local function guidParts(guid)
   local parts = {}
   if not guid then
@@ -369,6 +377,7 @@ local function handleCombatLog()
 end
 
 local function isValidLoot(locked, quality, threshold)
+  -- if quality and quality <= TuskUpLoot.Quality.Rare then return false end
   return not locked and quality and threshold < quality
 end
 
@@ -428,108 +437,6 @@ local function handleGroupLootStateChanged()
   updateLootMasterState()
 end
 
-local function handleAddonLoaded(...)
-  local addonName = ...
-  if addonName ~= addon.addonName then
-    return
-  end
-
-  if addon.DB and addon.DB.init then
-    addon.DB.init()
-    addon.dbInitialized = true
-  end
-
-  local networked = false
-  if addon.Net and addon.Net.init then
-    addon.Net.init()
-    networked = true
-  end
-
-  local Util = addon.UI and addon.UI.Util
-  local itemIds = Util and Util.getAllItemIds and Util.getAllItemIds() or {}
-  addon.totalItems = itemIds and #itemIds or 0
-  if addon.totalItems > 0 then
-    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
-      TuskUpLoot.ItemCache.preloadAll(itemIds, function()
-        addon.chatPrint("Item cache ready.")
-        if addon.UI and addon.UI.rebuildItemList then
-          addon.UI.rebuildItemList()
-        end
-      end)
-    end
-    local suffix = networked and " and Networked." or "."
-    addon.chatPrint("AddOn Initialized" .. suffix ..
-      " Data for " .. tostring(addon.totalItems) .. " items requested.")
-  else
-    addon.chatPrint("AddOn Initialized. No items to request.")
-  end
-
-  SLASH_TUSKUPLOOT1 = "/tul"
-  SLASH_TUSKUPLOOT2 = "/tuskup"
-  SlashCmdList.TUSKUPLOOT = function()
-    if addon.UI and addon.UI.toggle then
-      addon.UI.toggle()
-    end
-  end
-
-  eventFrame:UnregisterEvent("ADDON_LOADED")
-
-  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-  local instance = TuskUpLoot.Data.Instances[instanceId]
-  if instanceType == "raid" and instance then
-    enterRaidInstance(instanceId)
-  end
-
-  updateLootMasterState()
-end
-
-local function handleChatMessageAddon(...)
-  local prefix, message, distribution, sender = ...
-  if addon.Net and addon.Net.handleMessage then
-    addon.Net.handleMessage(prefix, message, distribution, sender)
-  end
-end
-
-local function handleZoneChangedNewArea()
-  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-  local instance = TuskUpLoot.Data.Instances[instanceId]
-  if instanceType ~= "raid" or not instance then
-    leaveRaidInstance()
-    return
-  end
-  if addon.State.InstanceId == instanceId then
-    tryCaptureRunInstanceFromNearbyNpcs()
-    return
-  end
-  enterRaidInstance(instanceId)
-end
-
-local function handleEncounterStart(...)
-  local encounterId = ...
-  local encounter = TuskUpLoot.Data.Encounters[encounterId]
-  if not encounter then return end
-  if encounter.instance_id ~= addon.State.InstanceId then return end
-  addon.State.EncounterId = encounterId
-  tryCaptureRunInstanceFromNearbyNpcs()
-end
-
-local function handleEncounterEnd(...)
-  local encounterId, _, _, _, success = ...
-  local encounter = TuskUpLoot.Data.Encounters[encounterId]
-  if not encounter then return end
-  if encounter.instance_id ~= addon.State.InstanceId then return end
-  if success then
-    tryCaptureRunInstanceFromNearbyNpcs()
-    recordEncounterClear(encounterId)
-    notifyRaidStateChanged()
-  end
-  addon.State.EncounterId = nil
-end
-
--- PARTY_LOOT_METHOD_CHANGED
--- GROUP_ROSTER_UPDATE
--- PLAYER_ROLES_ASSIGNED
-
 local function getPrimaryLootSourceGuid(lootInfo)
   for itemIdx = 1, #(lootInfo or {}) do
     local guid = GetLootSourceInfo(itemIdx)
@@ -562,10 +469,137 @@ local function sendLootNeedMessage(msg, isLootMaster)
   -- addon.chatPrint(msg)  -- uncomment locally to debug without ML/RL
 end
 
-local function handleLootOpened(...)
-  if not addon.State.InstanceId then
+-- —— Event Handlers ———————————————————————————————————————————————————————————
+
+-- Begin ADDON_LOADED handler (fires on startup and reload)
+local function handleAddonLoaded(...)
+  local addonName = ...
+  if addonName ~= addon.addonName then
     return
   end
+
+  if addon.DB and addon.DB.init then
+    addon.DB.init()
+    addon.dbInitialized = true
+  end
+
+  eventFrame:UnregisterEvent("ADDON_LOADED")
+end
+-- End ADDON_LOADED handler
+
+-- Begin PLAYER_LOGIN handler (fires on character login and reload)
+local function handlePlayerLogin()
+  local networked = false
+  if addon.Net and addon.Net.init then
+    addon.Net.init()
+    networked = true
+  end
+
+  local playerName = getFullPlayerName()
+  if playerName then
+    addon.chatPrint("playerName: " .. playerName)
+    addon.PlayerCharacter = playerName
+  else
+    addon.chatPrint("playerName not found")
+    addon.PlayerCharacter = nil
+  end
+
+  local Util = addon.UI and addon.UI.Util
+  local itemIds = Util and Util.getAllItemIds and Util.getAllItemIds() or {}
+  addon.totalItems = itemIds and #itemIds or 0
+  if addon.totalItems > 0 then
+    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
+      TuskUpLoot.ItemCache.preloadAll(itemIds, function()
+        addon.chatPrint("Item cache ready.")
+        if addon.UI and addon.UI.rebuildItemList then
+          addon.UI.rebuildItemList()
+        end
+      end)
+    end
+    local suffix = networked and " and Networked." or "."
+    addon.chatPrint("AddOn Initialized" .. suffix ..
+      " Data for " .. tostring(addon.totalItems) .. " items requested.")
+  else
+    addon.chatPrint("AddOn Initialized. No items to request.")
+  end
+
+  eventFrame:UnregisterEvent("PLAYER_LOGIN")
+end
+-- End PLAYER_LOGIN handler
+
+-- Begin PLAYER_ENTERING_WORLD handler (fires essentially each loading screen)
+local function handlePlayerEnteringWorld()
+  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
+  local instance = TuskUpLoot.Data.Instances[instanceId]
+  if instanceType == "raid" and instance then
+    enterRaidInstance(instanceId)
+  end
+
+  updateLootMasterState()
+end
+-- End PLAYER_ENTERING_WORLD handler
+
+-- Begin CHAT_MSG_ADDON handler (fires on addon message)
+local function handleChatMessageAddon(...)
+  local prefix, message, distribution, sender = ...
+  addon.chatPrint("addon msg recvd: " .. prefix .. " " .. message .. " " .. distribution .. " " .. sender)
+  if addon.Net and addon.Net.handleMessage then
+    addon.Net.handleMessage(prefix, message, distribution, sender)
+  end
+end
+-- End CHAT_MSG_ADDON handler
+
+-- Begin ZONE_CHANGED_NEW_AREA handler (fires on zone change)
+local function handleZoneChangedNewArea()
+  local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
+  local instance = TuskUpLoot.Data.Instances[instanceId]
+  if instanceType ~= "raid" or not instance then
+    leaveRaidInstance()
+    return
+  end
+  if addon.State.InstanceId == instanceId then
+    tryCaptureRunInstanceFromNearbyNpcs()
+    return
+  end
+  enterRaidInstance(instanceId)
+end
+-- End ZONE_CHANGED_NEW_AREA handler
+
+-- Begin ENCOUNTER_START handler (fires on encounter start)
+local function handleEncounterStart(...)
+  local encounterId = ...
+  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  if not encounter then return end
+  if encounter.instance_id ~= addon.State.InstanceId then return end
+  addon.State.EncounterId = encounterId
+  tryCaptureRunInstanceFromNearbyNpcs()
+end
+-- End ENCOUNTER_START handler
+
+-- Begin ENCOUNTER_END handler (fires on encounter end)
+local function handleEncounterEnd(...)
+  local encounterId, _, _, _, success = ...
+  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  if not encounter then return end
+  if encounter.instance_id ~= addon.State.InstanceId then return end
+  if success then
+    tryCaptureRunInstanceFromNearbyNpcs()
+    recordEncounterClear(encounterId)
+    notifyRaidStateChanged()
+  end
+  addon.State.EncounterId = nil
+end
+-- End ENCOUNTER_END handler
+
+-- PARTY_LOOT_METHOD_CHANGED
+-- GROUP_ROSTER_UPDATE
+-- PLAYER_ROLES_ASSIGNED
+
+-- Begin LOOT_OPENED handler (fires when loot dialog opens)
+local function handleLootOpened(...)
+  -- if not addon.State.InstanceId then
+  --   return
+  -- end
 
   local isLootMaster = addon.State.IsLootMaster or false
   local lootInfo = GetLootInfo()
@@ -603,6 +637,7 @@ local function handleLootOpened(...)
   -- ))
 
   local collectedSlots = {}
+  local collectedIds = {}
   for itemIdx, itemInfo in ipairs(lootInfo) do
     local itemLink = GetLootSlotLink(itemIdx)
     if itemLink then
@@ -614,6 +649,7 @@ local function handleLootOpened(...)
           locked = itemInfo.locked,
           quality = itemInfo.quality,
         }
+        collectedIds[#collectedIds + 1] = dropId
       end
     end
   end
@@ -623,20 +659,7 @@ local function handleLootOpened(...)
     return
   end
 
-  local collectedIds = {}
-  for _, slot in ipairs(collectedSlots) do
-    collectedIds[#collectedIds + 1] = slot.itemId
-  end
-
-  if isLootMaster then
-    mergeEncounterDrops(dropBucket, collectedIds)
-    if addon.Net and addon.Net.broadcastLootDrop then
-      addon.Net.broadcastLootDrop(dropBucket, collectedIds)
-    end
-  else
-    -- addon.chatPrint("skipped record (not loot master)")
-  end
-
+  local broadcastIds = {}
   for _, slot in ipairs(collectedSlots) do
     local dropId = slot.itemId
     if ledger.items[dropId] then
@@ -644,6 +667,7 @@ local function handleLootOpened(...)
     elseif not Data.isRaidBroadcastExcluded(dropId)
         and isValidLoot(slot.locked, slot.quality, lootThreshold)
         and Data.getItemNeedInfo then
+      broadcastIds[#broadcastIds + 1] = dropId
       local needInfo = Data.getItemNeedInfo(dropId)
       local neededBy = filterNeedInfoToRaid(needInfo, raidKeys)
       local msg
@@ -657,12 +681,28 @@ local function handleLootOpened(...)
     end
   end
 
+  if isLootMaster then
+    mergeEncounterDrops(dropBucket, collectedIds)
+    if addon.Net and addon.Net.broadcastLootDrop then
+      addon.Net.broadcastLootDrop(dropBucket, broadcastIds)
+    end
+  else
+    -- if not loot master, wait on loot master broadcast to record
+    -- addon.chatPrint("skipped record (not loot master)")
+  end
+
   ledger.complete = true
 end
+-- End LOOT_OPENED handler
 
+-- Begin eventHandler (fires on all events)
 local function eventHandler(_, event, ...)
   if event == "ADDON_LOADED" then
     return handleAddonLoaded(...)
+  elseif event == "PLAYER_LOGIN" then
+    return handlePlayerLogin()
+  elseif event == "PLAYER_ENTERING_WORLD" then
+    return handlePlayerEnteringWorld()
   elseif event == "CHAT_MSG_ADDON" then
     return handleChatMessageAddon(...)
   elseif event == "ZONE_CHANGED_NEW_AREA" then
@@ -687,8 +727,12 @@ local function eventHandler(_, event, ...)
     return handleGroupLootStateChanged()
   end
 end
+-- End eventHandler
 
+-- Register events on our handler frame
 eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("LOOT_OPENED")
@@ -696,6 +740,17 @@ eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
 eventFrame:SetScript("OnEvent", eventHandler)
+-- End event registration
+
+-- Begin slash command definitions
+SLASH_TUSKUPLOOT1 = "/tul"
+SLASH_TUSKUPLOOT2 = "/tuskup"
+SlashCmdList.TUSKUPLOOT = function()
+  if addon.UI and addon.UI.toggle then
+    addon.UI.toggle()
+  end
+end
+-- End slash command definitions
 
 -- Guild sync disabled; re-enable by loading Sync/*.lua in .toc and uncommenting below.
 -- if TuskUpLoot.Sync and TuskUpLoot.Sync.init then
