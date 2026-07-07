@@ -1,6 +1,7 @@
 -- Net/TuskUpLootNet.lua
-TuskUpLoot.Net          = {}
-local Net               = TuskUpLoot.Net
+local TUL               = TuskUpLoot -- alias for brevity
+TUL.Net                 = {}
+local Net               = TUL.Net
 
 -- ── Constants ────────────────────────────────────────────────────────────────
 local PREFIX            = "TuskUpLoot"
@@ -29,6 +30,14 @@ local CHANNELS          = {
 
 -- ── Internal Helpers ─────────────────────────────────────────────────────────
 
+-- escapes the delimiter for printing
+--- @param message string
+--- @return string
+local function escapeDelimiter(message)
+    local escaped = message:gsub("|", "||")
+    return escaped
+end
+
 -- returns the best available channel given current group status
 local function getChannel()
     if IsInRaid() then return CHANNELS.raid end
@@ -50,7 +59,11 @@ end
 local function encode(msgType, payload)
     local parts = { tostring(VERSION), msgType }
     if payload then
+        TUL.chatPrint("encoding payload: " .. payload)
         parts[#parts + 1] = payload
+    end
+    for _, part in ipairs(parts) do
+        TUL.chatPrint("    part: " .. part)
     end
     return table.concat(parts, DELIMITER)
 end
@@ -90,10 +103,10 @@ end
 --- @param payload string
 --- @return {dropBucket: number|string, itemIds: number[]}
 local function parseLootDropPayload(payload)
-    local encounterId, itemsPayload = payload:split(PAYLOAD_DELIMITER)
+    local encounterId, itemsPayload = string.split(PAYLOAD_DELIMITER, payload)
     ---@type number|string
     local dropBucket = encounterId
-    if encounterId ~= TuskUpLoot.Data.TRASH_DROP_BUCKET then
+    if encounterId ~= TUL.Data.TRASH_DROP_BUCKET then
         dropBucket = tonumber(encounterId)
     end
 
@@ -119,12 +132,14 @@ end
 local function broadcast(msgType, payload)
     local channel = getChannel()
     local message = encode(msgType, payload)
+    -- TUL.chatPrint(escapeDelimiter(message))
     C_ChatInfo.SendAddonMessage(PREFIX, message, channel)
 end
 
 -- notify peers of a loot drop
 function Net.broadcastLootDrop(dropBucket, itemIds)
     local payload = formLootDropPayload(dropBucket, itemIds)
+    -- TUL.chatPrint("broadcasting loot drop: " .. payload)
     broadcast(Net.MSG.LOOT_DROP, payload)
 end
 
@@ -145,21 +160,33 @@ handlers[Net.MSG.LOOT_DROP] = function(sender, lootDropPayload)
     TuskUpLoot.mergeDrops(payload.dropBucket, payload.itemIds)
 end
 
+--- @function handlers[Net.MSG.ITEM_ACQUIRED]
+--- @param sender string
+--- @param itemAcquiredPayload string
 handlers[Net.MSG.ITEM_ACQUIRED] = function(sender, itemAcquiredPayload)
-    local itemIdStr, characterKey = itemAcquiredPayload:split(PAYLOAD_DELIMITER)
+    TUL.chatPrint("ITEM_ACQUIRED: '" .. itemAcquiredPayload .. "'")
+    local itemIdStr, characterKey = string.split(PAYLOAD_DELIMITER, itemAcquiredPayload)
+    TUL.chatPrint("itemIdStr: " .. itemIdStr .. " characterKey: " .. characterKey)
     local itemId = tonumber(itemIdStr)
-    TuskUpLoot.chatPrint(sender .. " marked item " .. itemId .. " as acquired for character " .. characterKey)
-    TuskUpLoot.DB.markItemAcquired(itemId, characterKey)
+    TUL.chatPrint("itemId: " .. itemId)
+    TUL.chatPrint(sender .. " marked item " .. itemId .. " as acquired for character " .. characterKey)
+    TUL.DB.markItemAcquired(itemId, characterKey)
 end
 
 function Net.handleMessage(prefix, raw, _, sender)
-    if prefix ~= PREFIX then return end -- ignore other addon messages
+    -- ignore other addon messages
+    if prefix ~= PREFIX then return end
+
+    -- ignore messages from self
+    if TUL.PlayerCharacter and sender == TUL.PlayerCharacter then return end
 
     local msg = decode(raw)
-    if not msg then return end -- malformed or wrong version
+    -- malformed or wrong version
+    if not msg then return end
 
     local handler = handlers[msg.msgType]
-    if not handler then return end -- unknown message type, ignore
+    -- unknown message type, ignore
+    if not handler then return end
 
     handler(cleanSender(sender), msg.payload)
 end
@@ -169,6 +196,6 @@ end
 function Net.init()
     local ok = C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
     if not ok then
-        TuskUpLoot.chatPrint("Warning: could not register addon message prefix.")
+        TUL.chatPrint("Warning: could not register addon message prefix.")
     end
 end
