@@ -1,5 +1,12 @@
 # TuskUpLoot
 
+## 1.3.1
+
+#### Event Changes & Networking Debug
+
+- Changes to event registartions, handling, and responsibility
+- Inter-addon comms WIP
+
 ## 1.3.0
 
 #### Addon Networking
