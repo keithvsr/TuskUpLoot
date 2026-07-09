@@ -1,4 +1,4 @@
-## Interface: 20505
+## Interface: 20506
 ## Title: TuskUpLoot
 ## Category: Loot
 ## Notes: TBC raid loot catalog and guild BIS import

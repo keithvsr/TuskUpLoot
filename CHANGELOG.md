@@ -1,5 +1,9 @@
 # TuskUpLoot
 
+## 1.3.2
+
+- Bumps TOC to version 2.5.6 of TBC Classic Anniversary
+
 ## 1.3.1
 
 #### Event Changes & Networking Debug
