@@ -16,6 +16,7 @@ Data/Encounters.lua
 Data/TierLinks.lua
 Data/Loot.lua
 DB/TuskUpLootDB.lua
+Opts/TuskUpLootOpts.lua
 ItemCache.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
@@ -27,6 +28,7 @@ UI/ItemDetail.lua
 UI/CharactersTab.lua
 UI/ItemsTab.lua
 UI/RaidsTab.lua
+UI/OptionsTab.lua
 UI/Tabs.lua
 UI/ImportFrame.lua
 UI/SyncOffer.lua
