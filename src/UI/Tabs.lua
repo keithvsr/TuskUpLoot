@@ -62,6 +62,7 @@ local function updateTabButtonStyles()
     { key = "characters", btn = UI.tabCharactersBtn },
     { key = "raids",      btn = UI.tabRaidsBtn },
     { key = "items",      btn = UI.tabItemsBtn },
+    { key = "options",    btn = UI.tabOptionsBtn },
   }
   for _, tab in ipairs(tabs) do
     if tab.btn and tab.btn.text then
@@ -81,6 +82,7 @@ end
 
 local function updateTabVisibility()
   local tab = UI.activeTab
+  local isOptions = (tab == "options")
 
   if UI.charListScroll then
     UI.charListScroll:SetShown(tab == "characters")
@@ -113,15 +115,18 @@ local function updateTabVisibility()
     characters = "Characters",
     raids = "Raids",
     items = "Imported Items",
+    options = "Options",
   }
   if UI.listTitle then
     UI.listTitle:SetText(titles[tab] or "")
+    UI.listTitle:SetShown(not isOptions)
   end
 
   local detailLabels = {
     characters = "Gear sets",
     raids = "Loot",
     items = "Who needs it",
+    options = "Settings",
   }
   if UI.detailSectionLabel then
     UI.detailSectionLabel:SetText(detailLabels[tab] or "")
@@ -149,8 +154,14 @@ local function updateTabVisibility()
   if UI.encounterLootContainer then
     UI.encounterLootContainer:SetShown(tab == "raids")
   end
+  if UI.optionsContainer then
+    UI.optionsContainer:SetShown(isOptions)
+  end
+  if UI.detailScroll then
+    UI.detailScroll:SetShown(not isOptions)
+  end
 
-  if tab == "characters" or tab == "raids" then
+  if tab == "characters" or tab == "raids" or isOptions then
     if UI.needsTitle then UI.needsTitle:Hide() end
     if UI.needsListContainer then UI.needsListContainer:Hide() end
     if UI.hasTitle then UI.hasTitle:Hide() end
@@ -174,7 +185,9 @@ local function updateTabVisibility()
     UI.detailBackBtn:Hide()
   end
 
-  Util.layoutDetailScrollForTab(tab)
+  if not isOptions then
+    Util.layoutDetailScrollForTab(tab)
+  end
 
   updateTabButtonStyles()
   UI.updateCharSortButtonStyles()
@@ -204,6 +217,8 @@ function UI.setActiveTab(tab)
   elseif tab == "raids" then
     UI.rebuildRaidList()
     UI.renderEncounterLootPanel()
+  elseif tab == "options" then
+    UI.renderOptionsPanel()
   end
 end
 
@@ -225,6 +240,8 @@ function UI.refresh()
     UI.renderSelectedItem()
   elseif tab == "raids" then
     UI.renderEncounterLootPanel()
+  elseif tab == "options" then
+    UI.renderOptionsPanel()
   end
 end
 
@@ -236,6 +253,8 @@ function UI.refreshAfterImport()
     UI.renderEncounterLootPanel()
   elseif UI.activeTab == "characters" then
     UI.renderCharacterPanel()
+  elseif UI.activeTab == "options" then
+    UI.renderOptionsPanel()
   else
     UI.renderSelectedItem()
   end

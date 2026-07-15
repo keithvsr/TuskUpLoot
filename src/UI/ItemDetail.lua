@@ -264,6 +264,19 @@ local function renderTierTokenNeedsList(rewardGroups)
   container:SetHeight(math.max(1, y))
 end
 
+local function layoutItemDetailHeader(itemId, fallbackName)
+  if UI.itemIconBtn then
+    Util.refreshItemIconButton(UI.itemIconBtn, itemId)
+    UI.itemIconBtn:Show()
+    UI.detailLinkFS:ClearAllPoints()
+    UI.detailLinkFS:SetPoint("LEFT", UI.itemIconBtn, "RIGHT", 10, 0)
+    local rightPad = (UI.detailBackBtn and UI.detailBackBtn:IsShown()) and -60 or -10
+    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", rightPad, 0)
+    Util.bindItemDetailShiftLinks(itemId)
+  end
+  UI.detailLinkFS:SetText(Util.getItemDisplayLink(itemId, fallbackName))
+end
+
 function UI.renderSelectedItem()
   if not UI.needsTitle or not UI.needsListContainer or not UI.hasTitle or not UI.hasText or not UI.detailLinkFS or not UI.detailScrollChild then
     return
@@ -313,9 +326,6 @@ function UI.renderSelectedItem()
     if UI.detailLinkHitBtn then
       UI.detailLinkHitBtn:Hide()
     end
-    if UI.detailLinkHitBtn then
-      UI.detailLinkHitBtn:Hide()
-    end
     if UI.detailBackBtn and UI.returnContext then
       UI.detailBackBtn:Show()
     end
@@ -335,12 +345,7 @@ function UI.renderSelectedItem()
   end
 
   if not item and not hasRollup then
-    if UI.itemIconBtn then
-      Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
-      UI.itemIconBtn:Show()
-      Util.bindItemDetailShiftLinks(selectedItemId)
-    end
-    UI.detailLinkFS:SetText(Util.getItemDisplayLink(selectedItemId))
+    layoutItemDetailHeader(selectedItemId)
     UI.needsTitle:SetText("No characters linked to this item in saved data.")
     clearNeedsList()
     UI.needsListContainer:Hide()
@@ -361,16 +366,7 @@ function UI.renderSelectedItem()
   UI.hasTitle:Hide()
   UI.hasText:Hide()
 
-  if UI.itemIconBtn then
-    UI.itemIconBtn:Show()
-    Util.refreshItemIconButton(UI.itemIconBtn, selectedItemId)
-    UI.detailLinkFS:ClearAllPoints()
-    UI.detailLinkFS:SetPoint("LEFT", UI.itemIconBtn, "RIGHT", 10, 0)
-    UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", -60, 0)
-    Util.bindItemDetailShiftLinks(selectedItemId)
-  end
-
-  UI.detailLinkFS:SetText(Util.getItemDisplayLink(selectedItemId, item and item.name))
+  layoutItemDetailHeader(selectedItemId, item and item.name)
 
   if not needInfo or ((#needInfo.needs == 0) and (#needInfo.has == 0) and not hasRewardNeeds) then
     UI.needsTitle:SetText("No characters linked to this item in saved data.")

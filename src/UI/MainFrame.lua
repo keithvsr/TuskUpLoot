@@ -49,7 +49,7 @@ function UI.ensureFrame()
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:ClearAllPoints()
   title:SetPoint("TOP", f, "TOP", 0, -8)
-  title:SetText("TuskUpLoot — Guild")
+  title:SetText("TuskUpLoot")
   UI.frameTitle = title
 
   local listBg = CreateFrame("Frame", "TuskUpLootListBg", f)
@@ -59,7 +59,7 @@ function UI.ensureFrame()
 
   local function createTabButton(parent, label, xOffset, tabKey)
     local btn = CreateFrame("Button", "TuskUpLootTabButton" .. tabKey, parent)
-    btn:SetSize(62, C.TAB_HEIGHT)
+    btn:SetSize(48, C.TAB_HEIGHT)
     btn:SetPoint("TOPLEFT", parent, "TOPLEFT", xOffset, 0)
 
     btn.bg = btn:CreateTexture(nil, "BACKGROUND")
@@ -84,8 +84,9 @@ function UI.ensureFrame()
   tabStrip:SetPoint("TOPRIGHT", listBg, "TOPRIGHT", 0, 0)
   tabStrip:SetHeight(C.TAB_HEIGHT)
   UI.tabCharactersBtn = createTabButton(tabStrip, "Chars", 0, "characters")
-  UI.tabRaidsBtn = createTabButton(tabStrip, "Raids", 64, "raids")
-  UI.tabItemsBtn = createTabButton(tabStrip, "Items", 128, "items")
+  UI.tabRaidsBtn = createTabButton(tabStrip, "Raids", 50, "raids")
+  UI.tabItemsBtn = createTabButton(tabStrip, "Items", 100, "items")
+  UI.tabOptionsBtn = createTabButton(tabStrip, "Opts", 150, "options")
 
   local listTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   listTitle:SetPoint("TOPLEFT", listBg, "TOPLEFT", 2, -(C.TAB_HEIGHT + 2))
@@ -390,6 +391,12 @@ function UI.ensureFrame()
   charGearContainer:SetHeight(1)
   charGearContainer:Hide()
   UI.charGearContainer = charGearContainer
+
+  local optionsContainer = CreateFrame("Frame", "TuskUpLootOptionsContainer", f)
+  optionsContainer:SetPoint("TOPLEFT", f, "TOPLEFT", C.CONTENT_X, -64)
+  optionsContainer:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -C.MARGIN_R, C.DETAIL_BOTTOM_CLOSED)
+  optionsContainer:Hide()
+  UI.optionsContainer = optionsContainer
 
   local backBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
   backBtn:SetSize(52, 22)
