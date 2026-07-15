@@ -8,6 +8,7 @@ World of Warcraft addon for **TBC Classic Anniversary** (`Interface 20505`). Gui
 - **Characters** — gear sets per character, acquired toggles, class-colored summary
 - **Items** — who still needs each piece; mark acquired
 - **Raids** — instance loot, need counts, boss clear tracking (per raid run)
+- **Opts** — toggle raid loot chat announcements and debug messaging
 
 ## Install
 

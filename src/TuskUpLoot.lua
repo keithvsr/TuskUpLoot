@@ -11,6 +11,14 @@ function addon.chatPrint(msg)
   end
 end
 
+function addon.debugPrint(msg)
+  local Opts = addon.Opts
+  if not (Opts and Opts.debugEnabled and Opts.debugEnabled()) then
+    return
+  end
+  addon.chatPrint(msg)
+end
+
 local eventFrame = CreateFrame("Frame", "TuskUpLootEventFrame")
 
 local pendingRunInstanceCapture = false
@@ -463,10 +471,12 @@ local function getSourceLedger(sourceGuid)
 end
 
 local function sendLootNeedMessage(msg, isLootMaster)
-  if isLootMaster then
+  local Opts = addon.Opts
+  local sendRaidChat = not Opts or not Opts.sendRaidChatEnabled or Opts.sendRaidChatEnabled()
+  if isLootMaster and sendRaidChat then
     C_ChatInfo.SendChatMessage(msg, "RAID")
   end
-  -- addon.chatPrint(msg)  -- uncomment locally to debug without ML/RL
+  -- addon.debugPrint(msg)  -- uncomment locally to debug without ML/RL
 end
 
 -- —— Event Handlers ———————————————————————————————————————————————————————————
@@ -481,6 +491,9 @@ local function handleAddonLoaded(...)
   if addon.DB and addon.DB.init then
     addon.DB.init()
     addon.dbInitialized = true
+  end
+  if addon.Opts and addon.Opts.init then
+    addon.Opts.init()
   end
 
   eventFrame:UnregisterEvent("ADDON_LOADED")
@@ -497,10 +510,10 @@ local function handlePlayerLogin()
 
   local playerName = getFullPlayerName()
   if playerName then
-    addon.chatPrint("playerName: " .. playerName)
+    addon.debugPrint("playerName: " .. playerName)
     addon.PlayerCharacter = playerName
   else
-    addon.chatPrint("playerName not found")
+    addon.debugPrint("playerName not found")
     addon.PlayerCharacter = nil
   end
 
@@ -510,7 +523,7 @@ local function handlePlayerLogin()
   if addon.totalItems > 0 then
     if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
       TuskUpLoot.ItemCache.preloadAll(itemIds, function()
-        addon.chatPrint("Item cache ready.")
+        addon.debugPrint("Item cache ready.")
         if addon.UI and addon.UI.rebuildItemList then
           addon.UI.rebuildItemList()
         end
@@ -542,7 +555,7 @@ end
 -- Begin CHAT_MSG_ADDON handler (fires on addon message)
 local function handleChatMessageAddon(...)
   local prefix, message, distribution, sender = ...
-  addon.chatPrint("addon msg recvd: " .. prefix .. " " .. message .. " " .. distribution .. " " .. sender)
+  addon.debugPrint("addon msg recvd: " .. prefix .. " " .. message .. " " .. distribution .. " " .. sender)
   if addon.Net and addon.Net.handleMessage then
     addon.Net.handleMessage(prefix, message, distribution, sender)
   end
@@ -751,8 +764,3 @@ SlashCmdList.TUSKUPLOOT = function()
   end
 end
 -- End slash command definitions
-
--- Guild sync disabled; re-enable by loading Sync/*.lua in .toc and uncommenting below.
--- if TuskUpLoot.Sync and TuskUpLoot.Sync.init then
---   TuskUpLoot.Sync.init(eventFrame)
--- end
