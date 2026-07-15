@@ -12,6 +12,10 @@ local function getDefaults()
     characters = {},
     raidRuns = {},
     manualSort = {},
+    opts = {
+      sendRaidChat = true,
+      debug = false,
+    },
   }
 end
 

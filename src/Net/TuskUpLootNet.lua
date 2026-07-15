@@ -59,11 +59,11 @@ end
 local function encode(msgType, payload)
     local parts = { tostring(VERSION), msgType }
     if payload then
-        TUL.chatPrint("encoding payload: " .. payload)
+        TUL.debugPrint("encoding payload: " .. payload)
         parts[#parts + 1] = payload
     end
     for _, part in ipairs(parts) do
-        TUL.chatPrint("    part: " .. part)
+        TUL.debugPrint("    part: " .. part)
     end
     return table.concat(parts, DELIMITER)
 end
@@ -156,7 +156,7 @@ local handlers = {}
 
 handlers[Net.MSG.LOOT_DROP] = function(sender, lootDropPayload)
     local payload = parseLootDropPayload(lootDropPayload)
-    TuskUpLoot.chatPrint(sender .. " reported loot drops for encounter " .. payload.dropBucket)
+    TUL.debugPrint(sender .. " reported loot drops for encounter " .. payload.dropBucket)
     TuskUpLoot.mergeDrops(payload.dropBucket, payload.itemIds)
 end
 
@@ -164,12 +164,12 @@ end
 --- @param sender string
 --- @param itemAcquiredPayload string
 handlers[Net.MSG.ITEM_ACQUIRED] = function(sender, itemAcquiredPayload)
-    TUL.chatPrint("ITEM_ACQUIRED: '" .. itemAcquiredPayload .. "'")
+    TUL.debugPrint("ITEM_ACQUIRED: '" .. itemAcquiredPayload .. "'")
     local itemIdStr, characterKey = string.split(PAYLOAD_DELIMITER, itemAcquiredPayload)
-    TUL.chatPrint("itemIdStr: " .. itemIdStr .. " characterKey: " .. characterKey)
+    TUL.debugPrint("itemIdStr: " .. itemIdStr .. " characterKey: " .. characterKey)
     local itemId = tonumber(itemIdStr)
-    TUL.chatPrint("itemId: " .. itemId)
-    TUL.chatPrint(sender .. " marked item " .. itemId .. " as acquired for character " .. characterKey)
+    TUL.debugPrint("itemId: " .. itemId)
+    TUL.debugPrint(sender .. " marked item " .. itemId .. " as acquired for character " .. characterKey)
     TUL.DB.markItemAcquired(itemId, characterKey)
 end
 
