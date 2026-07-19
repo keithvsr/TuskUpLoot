@@ -26,7 +26,7 @@ local function ensureOptionRows(container)
   end
 
   local rows = {}
-  local y = 0
+  local y = 32
   for i, def in ipairs(OPTION_ROWS) do
     local row = CreateFrame("Frame", nil, container)
     row:SetHeight(28)

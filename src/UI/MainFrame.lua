@@ -396,6 +396,18 @@ function UI.ensureFrame()
   optionsContainer:SetPoint("TOPLEFT", f, "TOPLEFT", C.CONTENT_X, -64)
   optionsContainer:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -C.MARGIN_R, C.DETAIL_BOTTOM_CLOSED)
   optionsContainer:Hide()
+
+  local networkedRow = CreateFrame("Frame", "TuskUpLootOptNetworkedRow", optionsContainer)
+  networkedRow:SetHeight(28)
+  networkedRow:SetPoint("TOPLEFT", optionsContainer, "TOPLEFT", 0, 0)
+  networkedRow:SetPoint("RIGHT", optionsContainer, "RIGHT", 0, 0)
+  local isNetworked = TuskUpLoot.Net.isPrefixRegistered()
+  local networkedLabel = (isNetworked and "|cFF00FF00Yes|r" or "|cFFFF0000No|r")
+  local networkedLabelFrame = networkedRow:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  networkedLabelFrame:SetPoint("LEFT", networkedRow, "LEFT", 4, 1)
+  networkedLabelFrame:SetJustifyH("LEFT")
+  networkedLabelFrame:SetText("Addon Messaging Prefix Registered: " .. networkedLabel)
+
   UI.optionsContainer = optionsContainer
 
   local backBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
