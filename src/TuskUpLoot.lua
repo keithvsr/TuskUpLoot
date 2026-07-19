@@ -555,7 +555,6 @@ end
 -- Begin CHAT_MSG_ADDON handler (fires on addon message)
 local function handleChatMessageAddon(...)
   local prefix, message, distribution, sender = ...
-  addon.debugPrint("addon msg recvd: " .. prefix .. " " .. message .. " " .. distribution .. " " .. sender)
   if addon.Net and addon.Net.handleMessage then
     addon.Net.handleMessage(prefix, message, distribution, sender)
   end

@@ -1,5 +1,11 @@
 # TuskUpLoot
 
+## 1.3.3
+
+- Options tab with persisted settings (`sendRaidChat`, `debug`)
+- Raid loot chat announcements and debug messaging can be toggled
+- Debug and logic fixes
+
 ## 1.3.2
 
 - Bumps TOC to version 2.5.6 of TBC Classic Anniversary
