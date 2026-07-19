@@ -144,8 +144,12 @@ function Net.broadcastLootDrop(dropBucket, itemIds)
 end
 
 -- notify peers when marking an item as acquired
-function Net.broadcastItemAcquired(itemId, characterKey)
-    local payload = tostring(itemId) .. PAYLOAD_DELIMITER .. characterKey
+--- @param itemId number
+--- @param characterKey string
+--- @param acquired? boolean
+function Net.broadcastItemAcquired(itemId, characterKey, acquired)
+    local wasAcquired = acquired and acquired == true and true or false
+    local payload = tostring(itemId) .. PAYLOAD_DELIMITER .. characterKey .. PAYLOAD_DELIMITER .. tostring(wasAcquired)
     broadcast(Net.MSG.ITEM_ACQUIRED, payload)
 end
 
@@ -165,20 +169,28 @@ end
 --- @param itemAcquiredPayload string
 handlers[Net.MSG.ITEM_ACQUIRED] = function(sender, itemAcquiredPayload)
     TUL.debugPrint("ITEM_ACQUIRED: '" .. itemAcquiredPayload .. "'")
-    local itemIdStr, characterKey = string.split(PAYLOAD_DELIMITER, itemAcquiredPayload)
-    TUL.debugPrint("itemIdStr: " .. itemIdStr .. " characterKey: " .. characterKey)
+    local itemIdStr, characterKey, acq = string.split(PAYLOAD_DELIMITER, itemAcquiredPayload)
+    TUL.debugPrint("itemIdStr: " .. itemIdStr .. " characterKey: " .. characterKey .. " acq: " .. acq)
     local itemId = tonumber(itemIdStr)
     TUL.debugPrint("itemId: " .. itemId)
-    TUL.debugPrint(sender .. " marked item " .. itemId .. " as acquired for character " .. characterKey)
+    local wasAcquired = acq == "true" and true or false
+    local acquired = wasAcquired and "LOOTED" or "UNLOOTED"
+    TUL.debugPrint(sender .. " marked item " .. itemId .. acquired .. " for character " .. characterKey)
     TUL.DB.markItemAcquired(itemId, characterKey)
 end
 
-function Net.handleMessage(prefix, raw, _, sender)
+function Net.handleMessage(prefix, raw, distribution, sender)
     -- ignore other addon messages
-    if prefix ~= PREFIX then return end
+    if prefix ~= PREFIX then
+        -- TUL.debugPrint("Addon msg received from another Addon: " .. prefix .. " " .. distribution .. " " .. sender)
+        return
+    end
 
     -- ignore messages from self
-    if TUL.PlayerCharacter and sender == TUL.PlayerCharacter then return end
+    if TUL.PlayerCharacter and sender == TUL.PlayerCharacter then
+        TUL.debugPrint("TUL msg recvd from self: " .. prefix .. " '" .. raw .. "' " .. distribution)
+        return
+    end
 
     local msg = decode(raw)
     -- malformed or wrong version
@@ -186,7 +198,10 @@ function Net.handleMessage(prefix, raw, _, sender)
 
     local handler = handlers[msg.msgType]
     -- unknown message type, ignore
-    if not handler then return end
+    if not handler then
+        TUL.debugPrint("Handler not found for TUL message type: " .. msg.msgType)
+        return
+    end
 
     handler(cleanSender(sender), msg.payload)
 end
@@ -198,4 +213,11 @@ function Net.init()
     if not ok then
         TUL.chatPrint("Warning: could not register addon message prefix.")
     end
+end
+
+-- ── Util ─────────────────────────────────────────────────────────────────────
+
+--- @return boolean
+function Net.isPrefixRegistered()
+    return C_ChatInfo.IsAddonMessagePrefixRegistered(PREFIX)
 end

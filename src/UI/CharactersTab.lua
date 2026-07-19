@@ -333,7 +333,7 @@ function UI.renderCharacterPanel()
             gearRow.acquiredCheck:SetScript("OnClick", function(self)
               DB.setItemAcquired(idCapture, keyCapture, self:GetChecked())
               if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
-                TuskUpLoot.Net.broadcastItemAcquired(idCapture, keyCapture)
+                TuskUpLoot.Net.broadcastItemAcquired(idCapture, keyCapture, self:GetChecked())
               end
               UI.renderCharacterPanel()
               refreshAfterDataChange()
