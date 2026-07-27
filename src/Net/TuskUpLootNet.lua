@@ -2,6 +2,7 @@
 local TUL               = TuskUpLoot -- alias for brevity
 TUL.Net                 = {}
 local Net               = TUL.Net
+LibStub("AceComm-3.0"):Embed(Net)
 
 -- ── Constants ────────────────────────────────────────────────────────────────
 local PREFIX            = "TuskUpLoot"
@@ -125,7 +126,7 @@ end
 -- send to a specific player via whisper
 local function sendTo(player, msgType, payload)
     local message = encode(msgType, payload)
-    C_ChatInfo.SendAddonMessage(PREFIX, message, "WHISPER", player)
+    Net:SendCommMessage(PREFIX, message, "WHISPER", player)
 end
 
 -- broadcast to the best available group/guild channel
@@ -133,7 +134,7 @@ local function broadcast(msgType, payload)
     local channel = getChannel()
     local message = encode(msgType, payload)
     -- TUL.chatPrint(escapeDelimiter(message))
-    C_ChatInfo.SendAddonMessage(PREFIX, message, channel)
+    Net:SendCommMessage(PREFIX, message, channel)
 end
 
 -- notify peers of a loot drop
@@ -208,11 +209,12 @@ end
 
 -- ── Init ─────────────────────────────────────────────────────────────────────
 
+function Net:OnCommReceived(prefix, message, distribution, sender)
+    Net.handleMessage(prefix, message, distribution, sender)
+end
+
 function Net.init()
-    local ok = C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    if not ok then
-        TUL.chatPrint("Warning: could not register addon message prefix.")
-    end
+    Net:RegisterComm(PREFIX, "OnCommReceived")
 end
 
 -- ── Util ─────────────────────────────────────────────────────────────────────

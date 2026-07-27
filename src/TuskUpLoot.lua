@@ -552,15 +552,6 @@ local function handlePlayerEnteringWorld()
 end
 -- End PLAYER_ENTERING_WORLD handler
 
--- Begin CHAT_MSG_ADDON handler (fires on addon message)
-local function handleChatMessageAddon(...)
-  local prefix, message, distribution, sender = ...
-  if addon.Net and addon.Net.handleMessage then
-    addon.Net.handleMessage(prefix, message, distribution, sender)
-  end
-end
--- End CHAT_MSG_ADDON handler
-
 -- Begin ZONE_CHANGED_NEW_AREA handler (fires on zone change)
 local function handleZoneChangedNewArea()
   local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
@@ -715,8 +706,6 @@ local function eventHandler(_, event, ...)
     return handlePlayerLogin()
   elseif event == "PLAYER_ENTERING_WORLD" then
     return handlePlayerEnteringWorld()
-  elseif event == "CHAT_MSG_ADDON" then
-    return handleChatMessageAddon(...)
   elseif event == "ZONE_CHANGED_NEW_AREA" then
     return handleZoneChangedNewArea()
   elseif event == "ENCOUNTER_START" then
@@ -745,7 +734,6 @@ end
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("LOOT_OPENED")
 eventFrame:RegisterEvent("PARTY_LOOT_METHOD_CHANGED")
