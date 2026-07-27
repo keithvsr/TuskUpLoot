@@ -29,7 +29,7 @@ while IFS= read -r f; do
   rel="${f#${SRC_DIR}/}"
   mkdir -p "${OUT_DIR}/$(dirname "${rel}")"
   cp -f "${f}" "${OUT_DIR}/${rel}"
-done < <(find "${SRC_DIR}" -type f -name '*.lua' | sort)
+done < <(find "${SRC_DIR}" -type f \( -name '*.lua' -o -name '*.xml' \) | sort)
 
 shopt -s nullglob
 extra_files=(
