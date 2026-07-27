@@ -5,4 +5,6 @@
     <Script file="Libs\LibStub\LibStub.lua" />
     <Include file="Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml" />
     <Include file="Libs\AceComm-3.0\AceComm-3.0.xml" />
+    <Include file="Libs\LibDeflate\lib.xml" />
+    <Include file="Libs\LibSerialize\lib.xml" />
 </Ui>
