@@ -6,6 +6,8 @@
 ## Version: @project-version@
 ## SavedVariables: TuskUpLootDB
 
+libraries.xml
+
 Core.lua
 Data/Items.lua
 Data/NPCs.lua
