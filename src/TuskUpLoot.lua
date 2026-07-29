@@ -507,6 +507,9 @@ local function handlePlayerLogin()
     addon.Net.init()
     networked = true
   end
+  if addon.Sync and addon.Sync.init then
+    addon.Sync.init()
+  end
 
   local playerName = getFullPlayerName()
   if playerName then

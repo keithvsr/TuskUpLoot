@@ -25,8 +25,6 @@ StaticPopupDialogs["TUSKUPLOOT_SYNC_OFFER"] = {
 }
 
 function UI.showSyncOffer(syncId, sender, mode, label)
-  return -- sync disabled
-  --[[
   if not syncId or not sender then
     return
   end
@@ -35,5 +33,4 @@ function UI.showSyncOffer(syncId, sender, mode, label)
     desc = label or "all saved data"
   end
   StaticPopup_Show("TUSKUPLOOT_SYNC_OFFER", sender, desc, { syncId = syncId })
-  --]]
 end

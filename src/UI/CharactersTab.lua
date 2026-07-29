@@ -287,11 +287,11 @@ function UI.renderCharacterPanel()
           end
           headerRow.removeBtn:SetPoint("RIGHT", headerRow, "RIGHT", -2, 0)
           headerRow.pushBtn:SetPoint("RIGHT", headerRow.removeBtn, "LEFT", -2, 0)
-          headerRow.pushBtn:Hide() -- sync disabled
+          headerRow.pushBtn:Show()
           headerRow:ClearAllPoints()
           headerRow:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
           headerRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
-          headerRow.label:SetPoint("RIGHT", headerRow.removeBtn, "LEFT", -4, 0)
+          headerRow.label:SetPoint("RIGHT", headerRow.pushBtn, "LEFT", -4, 0)
           headerRow.label:SetText(string.format("--- %s (phase %s) ---",
             gs.name or row.key, tostring(gs.phase or "?")))
           local gsKeyCapture = row.key
@@ -300,6 +300,11 @@ function UI.renderCharacterPanel()
               UI.renderCharacterPanel()
               UI.rebuildCharacterList()
               refreshAfterDataChange()
+            end
+          end)
+          headerRow.pushBtn:SetScript("OnClick", function()
+            if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushGearSetPicker then
+              TuskUpLoot.Sync.openPushGearSetPicker(selectedKey, gsKeyCapture)
             end
           end)
           headerRow:Show()

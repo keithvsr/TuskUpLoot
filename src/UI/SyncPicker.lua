@@ -206,10 +206,8 @@ function UI.ensureSyncPickerFrame()
 end
 
 function UI.showSyncPicker(onSelect)
-  return -- sync disabled
-  --[[
-  if not TuskUpLoot.isInRequiredGuild or not TuskUpLoot.isInRequiredGuild() then
-    Util.safeChatPrint("Sync is only available to members of the required guild.")
+  if not IsInGuild or not IsInGuild() then
+    Util.safeChatPrint("Sync requires guild membership to pick a recipient.")
     return
   end
 
@@ -228,5 +226,4 @@ function UI.showSyncPicker(onSelect)
     UI.syncPickerFrame:Raise()
     UI.syncPickerFrame:Show()
   end
-  --]]
 end

@@ -180,17 +180,17 @@ function UI.ensureFrame()
   pushDataBtn:SetSize(C.RAIL_WIDTH - 8, 22)
   pushDataBtn:SetPoint("BOTTOMLEFT", listBg, "BOTTOMLEFT", 0, 4)
   pushDataBtn:SetText("Push data")
-  pushDataBtn:Hide() -- sync disabled
-  -- pushDataBtn:SetScript("OnClick", function()
-  --   if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushFullPicker then
-  --     TuskUpLoot.Sync.openPushFullPicker()
-  --   end
-  -- end)
+  pushDataBtn:Hide()
+  pushDataBtn:SetScript("OnClick", function()
+    if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushFullPicker then
+      TuskUpLoot.Sync.openPushFullPicker()
+    end
+  end)
   UI.pushDataBtn = pushDataBtn
 
   local charManualResetBtn = CreateFrame("Button", nil, listBg, "UIPanelButtonTemplate")
   charManualResetBtn:SetSize(C.RAIL_WIDTH - 8, 22)
-  charManualResetBtn:SetPoint("BOTTOMLEFT", listBg, "BOTTOMLEFT", 0, 4)
+  charManualResetBtn:SetPoint("BOTTOMLEFT", listBg, "BOTTOMLEFT", 0, 28)
   charManualResetBtn:SetText("Reset order")
   charManualResetBtn:Hide()
   charManualResetBtn:SetScript("OnClick", function()
@@ -432,16 +432,15 @@ function UI.ensureFrame()
   UI.detailBackBtn = backBtn
 
   f:SetScript("OnHide", function()
-    -- sync disabled
-    -- if UI.syncPickerFrame then
-    --   UI.syncPickerFrame:Hide()
-    -- end
+    if UI.syncPickerFrame then
+      UI.syncPickerFrame:Hide()
+    end
     if UI.importFrame then
       UI.importFrame:Hide()
     end
-    -- if StaticPopup_Hide then
-    --   StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
-    -- end
+    if StaticPopup_Hide then
+      StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+    end
   end)
 
   UI.frame = f

@@ -76,16 +76,15 @@ function Util.updateFrameTitle()
 end
 
 function UI.dismissAllFrames()
-  -- sync disabled
-  -- if UI.syncPickerFrame then
-  --   UI.syncPickerFrame:Hide()
-  -- end
+  if UI.syncPickerFrame then
+    UI.syncPickerFrame:Hide()
+  end
   if UI.importFrame then
     UI.importFrame:Hide()
   end
-  -- if StaticPopup_Hide then
-  --   StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
-  -- end
+  if StaticPopup_Hide then
+    StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+  end
   if UI.frame then
     UI.frame:Hide()
   end

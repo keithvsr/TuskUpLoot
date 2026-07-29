@@ -46,13 +46,30 @@ function UI.updateCharSortButtonStyles()
 end
 
 function UI.updateCharManualOrderControls()
-  local showManualReset = (UI.activeTab == "characters")
-    and ((UI.charListSortBy or "name") == "manual")
+  local onChars = (UI.activeTab == "characters")
+  local showPush = onChars
+  local showManualReset = onChars and ((UI.charListSortBy or "name") == "manual")
+
+  if UI.pushDataBtn then
+    UI.pushDataBtn:SetShown(showPush)
+    UI.pushDataBtn:ClearAllPoints()
+    UI.pushDataBtn:SetPoint("BOTTOMLEFT", UI.pushDataBtn:GetParent(), "BOTTOMLEFT", 0, 4)
+  end
   if UI.charManualResetBtn then
     UI.charManualResetBtn:SetShown(showManualReset)
+    UI.charManualResetBtn:ClearAllPoints()
+    local parent = UI.charManualResetBtn:GetParent()
+    UI.charManualResetBtn:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, showPush and 28 or 4)
+  end
+
+  local bottomInset = 0
+  if showPush and showManualReset then
+    bottomInset = 52
+  elseif showPush or showManualReset then
+    bottomInset = 28
   end
   if UI.charListScroll and UI.charListScroll:GetParent() then
-    UI.charListScroll:SetPoint("BOTTOMRIGHT", UI.charListScroll:GetParent(), "BOTTOMRIGHT", -26, showManualReset and 28 or 0)
+    UI.charListScroll:SetPoint("BOTTOMRIGHT", UI.charListScroll:GetParent(), "BOTTOMRIGHT", -26, bottomInset)
   end
 end
 
@@ -93,10 +110,12 @@ local function updateTabVisibility()
   if UI.itemListScroll then
     UI.itemListScroll:SetShown(tab == "items")
   end
-  -- sync disabled
-  -- if UI.pushDataBtn then
-  --   UI.pushDataBtn:SetShown(tab == "characters")
-  -- end
+  if UI.pushDataBtn then
+    UI.pushDataBtn:SetShown(tab == "characters")
+  end
+  if UI.updateCharManualOrderControls then
+    UI.updateCharManualOrderControls()
+  end
 
   local showFilter = (tab == "characters" or tab == "items")
   if UI.filterBg then
