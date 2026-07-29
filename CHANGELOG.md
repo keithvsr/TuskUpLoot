@@ -1,5 +1,11 @@
 # TuskUpLoot
 
+## 1.4.0-a
+- Add helper libraries AceComm, LibStub, CallbackHandler, LibDeflate, and LibSerialize
+- Restore list sync code leveraging added libraries
+- Update networking functionality to use AceComm
+- Add Version checking between users
+
 ## 1.3.3
 
 - Options tab with persisted settings (`sendRaidChat`, `debug`)
