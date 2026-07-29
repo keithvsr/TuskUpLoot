@@ -5,6 +5,8 @@ local addon = TuskUpLoot
 addon.addonName = ADDON_NAME
 addon.State = addon.State or {}
 
+addon.version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
+
 function addon.chatPrint(msg)
   if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
     DEFAULT_CHAT_FRAME:AddMessage("|cffffff88" .. ADDON_NAME .. "|r: " .. tostring(msg))
@@ -506,6 +508,7 @@ local function handlePlayerLogin()
   if addon.Net and addon.Net.init then
     addon.Net.init()
     networked = true
+    addon.Net.broadcastVersionCheck(addon.version)
   end
   if addon.Sync and addon.Sync.init then
     addon.Sync.init()

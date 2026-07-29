@@ -1,8 +1,11 @@
 -- Net/TuskUpLootNet.lua
-local TUL               = TuskUpLoot -- alias for brevity
-TUL.Net                 = {}
-local Net               = TUL.Net
+local TUL = TuskUpLoot -- alias for brevity
+TUL.Net   = {}
+local Net = TUL.Net
 LibStub("AceComm-3.0"):Embed(Net)
+
+local LibSerialize      = LibStub("LibSerialize")
+local LibDeflate        = LibStub("LibDeflate")
 
 -- ── Constants ────────────────────────────────────────────────────────────────
 local PREFIX            = "TuskUpLoot"
@@ -20,6 +23,9 @@ Net.MSG                 = {
 
     -- handle item acquisition
     ITEM_ACQUIRED = "ITEM_ACQUIRED", -- sent when a player acquires an item
+
+    -- alert other users if their addon version is out of date
+    VERSION_CHECK = "VERSION_CHECK",
 }
 
 -- distribution channels, in priority order for broadcast
@@ -121,6 +127,16 @@ local function parseLootDropPayload(payload)
     }
 end
 
+local function parseVersionString(versionStr)
+    local valid, _, major, minor, patch = string.find(versionStr, "^(%d+)%.(%d+)%.(%d+)$")
+    if not valid then return nil end;
+    return {
+        major = tonumber(major),
+        minor = tonumber(minor),
+        patch = tonumber(patch),
+    }
+end
+
 -- ── Outgoing ─────────────────────────────────────────────────────────────────
 
 -- send to a specific player via whisper
@@ -154,6 +170,13 @@ function Net.broadcastItemAcquired(itemId, characterKey, acquired)
     broadcast(Net.MSG.ITEM_ACQUIRED, payload)
 end
 
+-- notify peers of active addon version
+function Net.broadcastVersionCheck(version)
+    -- version is a short string no need for serializing or compression
+    local payload = LibDeflate:EncodeForWoWAddonChannel(version)
+    broadcast(Net.MSG.VERSION_CHECK, payload)
+end
+
 -- ── Incoming ─────────────────────────────────────────────────────────────────
 
 -- handler table: MSG_TYPE -> function(sender, payload)
@@ -180,6 +203,33 @@ handlers[Net.MSG.ITEM_ACQUIRED] = function(sender, itemAcquiredPayload)
     TUL.DB.markItemAcquired(itemId, characterKey)
 end
 
+handlers[Net.MSG.VERSION_CHECK] = function(sender, versionPayload)
+    local versionStr = LibDeflate:DecodeForWoWAddonChannel(versionPayload)
+    TUL.debugPrint("VERSION_CHECK: '" .. versionStr .. "' from " .. sender)
+    -- if it was invalid payload or dev version or we're already on version, ignore
+    if not versionStr or versionStr == "dev" or versionStr == TUL.version or TUL.version == "dev" then return end;
+    local broadcastVersion = parseVersionString(versionStr)
+    local addonVersion = parseVersionString(TUL.version)
+    if not broadcastVersion or not addonVersion then return end;
+    if broadcastVersion.major > addonVersion.major then
+        TUL.chatPrint("New major version reported by " .. sender .. ": " .. versionStr);
+        return;
+    end
+    if broadcastVersion.minor > addonVersion.minor then
+        TUL.chatPrint("New minor version reported by " .. sender .. ": " .. versionStr);
+        return;
+    end
+    if broadcastVersion.patch > addonVersion.patch then
+        TUL.chatPrint("New patch version reported by " .. sender .. ": " .. versionStr);
+        return;
+    end
+    if broadcastVersion.major < addonVersion.major or broadcastVersion.minor < addonVersion.minor or broadcastVersion.patch < addonVersion.patch then
+        -- actually, our version is newer, send target a whisper
+        local payload = LibDeflate:EncodeForWoWAddonChannel(TUL.version)
+        sendTo(sender, Net.MSG.VERSION_CHECK, payload)
+    end
+end
+
 function Net.handleMessage(prefix, raw, distribution, sender)
     -- ignore other addon messages
     if prefix ~= PREFIX then
@@ -187,8 +237,9 @@ function Net.handleMessage(prefix, raw, distribution, sender)
         return
     end
 
-    -- ignore messages from self
-    if TUL.PlayerCharacter and sender == TUL.PlayerCharacter then
+    -- ignore messages from self (acecomm wraps sender in Ambiguate)
+    local playerName = TUL.PlayerCharacter and Ambiguate(TUL.PlayerCharacter, "none") or nil
+    if playerName and sender == playerName then
         TUL.debugPrint("TUL msg recvd from self: " .. prefix .. " '" .. raw .. "' " .. distribution)
         return
     end
@@ -210,6 +261,7 @@ end
 -- ── Init ─────────────────────────────────────────────────────────────────────
 
 function Net:OnCommReceived(prefix, message, distribution, sender)
+    TUL.debugPrint("Comm Recvd: " .. prefix .. " " .. sender)
     Net.handleMessage(prefix, message, distribution, sender)
 end
 
