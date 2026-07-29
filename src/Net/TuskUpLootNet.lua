@@ -128,12 +128,15 @@ local function parseLootDropPayload(payload)
 end
 
 local function parseVersionString(versionStr)
-    local valid, _, major, minor, patch = string.find(versionStr, "^(%d+)%.(%d+)%.(%d+)$")
+    local versionPattern = "^(%d+)%.(%d+)%.(%d+)-?(%w*)$"
+    local valid, _, major, minor, patch, suffix = string.find(versionStr, versionPattern)
     if not valid then return nil end;
+
     return {
         major = tonumber(major),
         minor = tonumber(minor),
         patch = tonumber(patch),
+        suffix = suffix
     }
 end
 
@@ -227,6 +230,12 @@ handlers[Net.MSG.VERSION_CHECK] = function(sender, versionPayload)
         -- actually, our version is newer, send target a whisper
         local payload = LibDeflate:EncodeForWoWAddonChannel(TUL.version)
         sendTo(sender, Net.MSG.VERSION_CHECK, payload)
+        return;
+    end
+    if broadcastVersion.suffix then
+        if not addonVersion.suffix or broadcastVersion.suffix > addonVersion.suffix then
+            TUL.chatPrint("New testing versions reported by " .. sender .. ": " .. versionStr)
+        end
     end
 end
 
