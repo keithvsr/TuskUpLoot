@@ -82,6 +82,9 @@ function UI.dismissAllFrames()
   if UI.importFrame then
     UI.importFrame:Hide()
   end
+  if UI.exportFrame then
+    UI.exportFrame:Hide()
+  end
   if StaticPopup_Hide then
     StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
   end
