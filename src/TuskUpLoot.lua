@@ -692,7 +692,7 @@ local function handleLootOpened(...)
 
   if isLootMaster then
     mergeEncounterDrops(dropBucket, collectedIds)
-    if addon.Net and addon.Net.broadcastLootDrop then
+    if addon.Net and addon.Net.broadcastLootDrop and #broadcastIds > 0 then
       addon.Net.broadcastLootDrop(dropBucket, broadcastIds)
     end
   else
