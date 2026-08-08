@@ -363,6 +363,22 @@ function UI.ensureFrame()
   end)
   UI.toggleImportBtn = toggleImportBtn
 
+  local toggleExportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  toggleExportBtn:SetSize(140, 22)
+  toggleExportBtn:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", C.CONTENT_X + 150, C.MARGIN_L)
+  toggleExportBtn:SetText("Export Gargul")
+  toggleExportBtn:SetScript("OnClick", function()
+    UI.ensureExportFrame()
+    if UI.exportFrame then
+      UI.frame:Hide()
+      if UI.exportEditBox then
+        UI.exportEditBox:SetText("")
+      end
+      UI.exportFrame:Show()
+    end
+  end)
+  UI.toggleExportBtn = toggleExportBtn
+
   local legacyText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   legacyText:SetText("")
   legacyText:Hide()
@@ -437,6 +453,9 @@ function UI.ensureFrame()
     end
     if UI.importFrame then
       UI.importFrame:Hide()
+    end
+    if UI.exportFrame then
+      UI.exportFrame:Hide()
     end
     if StaticPopup_Hide then
       StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
