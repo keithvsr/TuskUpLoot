@@ -10,6 +10,7 @@ Data.Instances = {
         id = 532,
         name = "Karazhan",
         zone_id = 3457,
+        gargul_name = "kara",
     },
     [534] = {
         encounter_type = "Raid",
@@ -17,6 +18,7 @@ Data.Instances = {
         id = 534,
         name = "Hyjal Summit",
         zone_id = 3606,
+        gargul_name = "hyjal",
     },
     [544] = {
         encounter_type = "Raid",
@@ -24,6 +26,7 @@ Data.Instances = {
         id = 544,
         name = "Magtheridon's Lair",
         zone_id = 3836,
+        gargul_name = "magtheridon",
     },
     [548] = {
         encounter_type = "Raid",
@@ -31,6 +34,7 @@ Data.Instances = {
         id = 548,
         name = "Serpentshrine Cavern",
         zone_id = 3607,
+        gargul_name = "ssc",
     },
     [550] = {
         encounter_type = "Raid",
@@ -38,6 +42,7 @@ Data.Instances = {
         id = 550,
         name = "Tempest Keep",
         zone_id = 3845,
+        gargul_name = "tempestkeep",
     },
     [564] = {
         encounter_type = "Raid",
@@ -45,6 +50,7 @@ Data.Instances = {
         id = 564,
         name = "Black Temple",
         zone_id = 3959,
+        gargul_name = "blacktemple",
     },
     [565] = {
         encounter_type = "Raid",
@@ -52,6 +58,7 @@ Data.Instances = {
         id = 565,
         name = "Gruul's Lair",
         zone_id = 3923,
+        gargul_name = "gruul",
     },
     [568] = {
         encounter_type = "Raid",
@@ -59,6 +66,7 @@ Data.Instances = {
         id = 568,
         name = "Zul'Aman",
         zone_id = 3805,
+        gargul_name = "za",
     },
     [580] = {
         encounter_type = "Raid",
@@ -66,5 +74,6 @@ Data.Instances = {
         id = 580,
         name = "Sunwell Plateau",
         zone_id = 4075,
+        gargul_name = "sunwellplateau",
     },
 }
