@@ -1,5 +1,9 @@
 # TuskUpLoot
 
+## 1.4.1
+- Wherein the addon becomes able to export loot needs to a Gargul import sting
+- Small addon broadcast fixes
+
 ## 1.4.0-a
 - Add helper libraries AceComm, LibStub, CallbackHandler, LibDeflate, and LibSerialize
 - Restore list sync code leveraging added libraries
