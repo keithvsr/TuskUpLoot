@@ -1,6 +1,7 @@
 -- Options tab: yes/no addon settings.
 
 local UI = TuskUpLoot.UI
+local Util = UI.Util
 local Opts = TuskUpLoot.Opts
 
 local OPTION_ROWS = {
@@ -18,6 +19,34 @@ local OPTION_ROWS = {
       return Opts and Opts.debugEnabled and Opts.debugEnabled()
     end,
   },
+}
+
+StaticPopupDialogs["TUSKUPLOOT_RESET_DB"] = {
+  text = "|cffff2020Warning:|r This permanently deletes ALL saved characters, gear sets, item needs, raid run data, and settings.\n\nThis cannot be undone.",
+  button1 = "Reset everything",
+  button2 = CANCEL,
+  OnAccept = function()
+    local DB = TuskUpLoot.DB
+    if DB and DB.resetToDefaults and DB.resetToDefaults() then
+      if Opts and Opts.init then
+        Opts.init()
+      end
+      UI.selectedCharacterKey = nil
+      UI.selectedItemId = nil
+      UI.collapsedGearSets = {}
+      if UI.refreshAfterImport then
+        UI.refreshAfterImport()
+      end
+      if UI.renderOptionsPanel then
+        UI.renderOptionsPanel()
+      end
+      Util.safeChatPrint("All saved data has been reset to defaults.")
+    end
+  end,
+  timeout = 0,
+  whileDead = 1,
+  hideOnEscape = 1,
+  preferredIndex = 3,
 }
 
 local function ensureOptionRows(container)
@@ -59,8 +88,52 @@ local function ensureOptionRows(container)
   end
 
   container.rows = rows
-  container:SetHeight(math.max(1, y))
+  container.optionRowsHeight = y
   return rows
+end
+
+local function ensureDangerSection(container)
+  if container.dangerSection then
+    return container.dangerSection
+  end
+
+  local startY = (container.optionRowsHeight or 96) + 24
+  local section = CreateFrame("Frame", nil, container)
+  section:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -startY)
+  section:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+  section:SetHeight(96)
+
+  local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  title:SetPoint("TOPLEFT", section, "TOPLEFT", 4, 0)
+  title:SetJustifyH("LEFT")
+  title:SetText("|cffff2020Danger|r")
+
+  local warning = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  warning:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+  warning:SetPoint("RIGHT", section, "RIGHT", -4, 0)
+  warning:SetJustifyH("LEFT")
+  warning:SetWordWrap(true)
+  warning:SetText(
+    "Permanently delete all imported characters, gear sets, item needs, raid run history, and reset addon settings.")
+
+  local resetBtn = CreateFrame("Button", nil, section, "UIPanelButtonTemplate")
+  resetBtn:SetSize(180, 22)
+  resetBtn:SetPoint("TOPLEFT", warning, "BOTTOMLEFT", 0, -10)
+  resetBtn:SetText("Reset all saved data")
+  local resetFont = resetBtn.GetFontString and resetBtn:GetFontString()
+  if resetFont and resetFont.SetTextColor then
+    resetFont:SetTextColor(1, 0.25, 0.25)
+  end
+  resetBtn:SetScript("OnClick", function()
+    StaticPopup_Show("TUSKUPLOOT_RESET_DB")
+  end)
+
+  section.title = title
+  section.warning = warning
+  section.resetBtn = resetBtn
+  container.dangerSection = section
+  container.totalHeight = startY + 96
+  return section
 end
 
 function UI.renderOptionsPanel()
@@ -75,5 +148,9 @@ function UI.renderOptionsPanel()
     row.check:SetChecked(enabled)
     row:Show()
   end
+
+  local danger = ensureDangerSection(container)
+  danger:Show()
+  container:SetHeight(math.max(1, container.totalHeight or 192))
   container:Show()
 end

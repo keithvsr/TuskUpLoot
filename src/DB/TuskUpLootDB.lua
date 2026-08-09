@@ -809,6 +809,24 @@ function DB.hasSyncableData()
   return false
 end
 
+function DB.resetToDefaults()
+  if not TuskUpLootDB or type(TuskUpLootDB) ~= "table" then
+    TuskUpLootDB = getDefaults()
+    return true
+  end
+
+  for k in pairs(TuskUpLootDB) do
+    TuskUpLootDB[k] = nil
+  end
+
+  local defaults = getDefaults()
+  for k, v in pairs(defaults) do
+    TuskUpLootDB[k] = v
+  end
+
+  return true
+end
+
 -- function TuskUpLoot.DB.upsertImport(importObj, rawJsonText)
 --   ensureSavedVar()
 

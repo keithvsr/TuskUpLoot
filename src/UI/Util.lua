@@ -80,6 +80,7 @@ function UI.dismissAllFrames()
     StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
     StaticPopup_Hide("TUSKUPLOOT_REMOVE_CHARACTER")
     StaticPopup_Hide("TUSKUPLOOT_RENAME_CHARACTER")
+    StaticPopup_Hide("TUSKUPLOOT_RESET_DB")
   end
   if UI.syncPickerFrame then
     UI.syncPickerFrame:Hide()
@@ -107,6 +108,7 @@ local DISMISS_LAYERS = {
       "TUSKUPLOOT_SYNC_OFFER",
       "TUSKUPLOOT_REMOVE_CHARACTER",
       "TUSKUPLOOT_RENAME_CHARACTER",
+      "TUSKUPLOOT_RESET_DB",
     }) do
       if StaticPopup_Visible(key) then
         StaticPopup_Hide(key)
