@@ -408,6 +408,87 @@ function DB.removeGearSet(characterKey, gearSetKey)
   return true
 end
 
+local function removeFromManualSort(characterKey)
+  ensureSavedVar()
+  if type(TuskUpLootDB.manualSort) ~= "table" then
+    return
+  end
+  for i, key in ipairs(TuskUpLootDB.manualSort) do
+    if key == characterKey then
+      table.remove(TuskUpLootDB.manualSort, i)
+      return
+    end
+  end
+end
+
+function DB.removeCharacter(characterKey)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" then
+    return false
+  end
+
+  local character = TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if not character then
+    return false
+  end
+
+  local gearSetKeys = {}
+  if character.gearSets then
+    for gsKey in pairs(character.gearSets) do
+      gearSetKeys[#gearSetKeys + 1] = gsKey
+    end
+  end
+
+  for _, gsKey in ipairs(gearSetKeys) do
+    DB.removeGearSet(characterKey, gsKey)
+  end
+
+  TuskUpLootDB.characters[characterKey] = nil
+  removeFromManualSort(characterKey)
+  return true
+end
+
+function DB.renameCharacter(characterKey, newName)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" or type(newName) ~= "string" then
+    return false
+  end
+
+  newName = newName:gsub("^%s+", ""):gsub("%s+$", "")
+  if newName == "" then
+    return false
+  end
+
+  local character = TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if not character then
+    return false
+  end
+
+  character.name = newName
+  return true
+end
+
+function DB.characterLatestActivityAt(characterKey)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" then
+    return 0
+  end
+
+  local character = TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if not character or not character.gearSets then
+    return 0
+  end
+
+  local latest = 0
+  for _, gearSet in pairs(character.gearSets) do
+    local at = tonumber(gearSet and gearSet.importedAt) or 0
+    if at > latest then
+      latest = at
+    end
+  end
+  return latest
+end
+
 function DB.sortedItemIDs()
   ensureSavedVar()
   local ids = {}
@@ -616,12 +697,33 @@ function DB.mergeGearSetIfNewer(characterKey, gearSetKey, incomingGearSet)
   return false
 end
 
-function DB.applySyncBundle(bundle)
+local function replaceGearSet(characterKey, gearSetKey, incomingGearSet)
+  ensureSavedVar()
+  if type(characterKey) ~= "string"
+      or type(gearSetKey) ~= "string"
+      or type(incomingGearSet) ~= "table" then
+    return false
+  end
+
+  local character = TuskUpLootDB.characters[characterKey]
+  if not character then
+    return false
+  end
+  if not character.gearSets then
+    character.gearSets = {}
+  end
+
+  character.gearSets[gearSetKey] = copyGearSet(incomingGearSet)
+  return true
+end
+
+local function applySyncBundleInternal(bundle, mergeMode)
   ensureSavedVar()
   if type(bundle) ~= "table" then
     return { updated = 0, skipped = 0 }
   end
 
+  local replace = (mergeMode == "replace")
   local updated = 0
   local skipped = 0
   local updatedGearSets = {}
@@ -640,7 +742,13 @@ function DB.applySyncBundle(bundle)
       if type(charData.gearSets) == "table" then
         updatedGearSets[characterKey] = updatedGearSets[characterKey] or {}
         for gearSetKey, gearSet in pairs(charData.gearSets) do
-          if DB.mergeGearSetIfNewer(characterKey, gearSetKey, gearSet) then
+          local applied
+          if replace then
+            applied = replaceGearSet(characterKey, gearSetKey, gearSet)
+          else
+            applied = DB.mergeGearSetIfNewer(characterKey, gearSetKey, gearSet)
+          end
+          if applied then
             updated = updated + 1
             updatedGearSets[characterKey][gearSetKey] = true
           else
@@ -654,7 +762,7 @@ function DB.applySyncBundle(bundle)
   local items = bundle.items or {}
   local isFullBundle = bundle.mode == "FULL"
   for itemId, item in pairs(items) do
-    local shouldUpsert = isFullBundle
+    local shouldUpsert = replace or isFullBundle
     if not shouldUpsert and type(item) == "table" and type(item.characters) == "table" then
       for characterKey, charMeta in pairs(item.characters) do
         local charUpdated = updatedGearSets[characterKey]
@@ -677,6 +785,18 @@ function DB.applySyncBundle(bundle)
   end
 
   return { updated = updated, skipped = skipped }
+end
+
+function DB.applySyncBundle(bundle)
+  return applySyncBundleInternal(bundle, "merge")
+end
+
+function DB.replaceFromSyncBundle(bundle)
+  ensureSavedVar()
+  TuskUpLootDB.characters = {}
+  TuskUpLootDB.items = {}
+  TuskUpLootDB.manualSort = {}
+  return applySyncBundleInternal(bundle, "replace")
 end
 
 function DB.hasSyncableData()

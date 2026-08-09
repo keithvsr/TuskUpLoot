@@ -146,6 +146,22 @@ function Sync.pushFull(targetPlayerName)
   return Sync.sendOffer(targetPlayerName, "FULL", bundle, "all saved data")
 end
 
+function Sync.pushSelected(targetPlayerName, characterKeys)
+  debug(string.format("Sync.pushSelected → %s (%d characters)",
+    tostring(targetPlayerName), type(characterKeys) == "table" and #characterKeys or 0))
+  local bundle = Payload.buildSelectedCharactersBundle(characterKeys)
+  if not bundle then
+    chat("No character data to push.")
+    return false
+  end
+  local count = 0
+  for _ in pairs(bundle.characters or {}) do
+    count = count + 1
+  end
+  local label = string.format("%d character(s)", count)
+  return Sync.sendOffer(targetPlayerName, "PARTIAL", bundle, label)
+end
+
 function Sync.pushGearSet(targetPlayerName, characterKey, gearSetKey)
   debug(string.format("Sync.pushGearSet → %s char=%s set=%s",
     tostring(targetPlayerName), tostring(characterKey), tostring(gearSetKey)))
@@ -160,14 +176,16 @@ function Sync.pushGearSet(targetPlayerName, characterKey, gearSetKey)
   return Sync.sendOffer(targetPlayerName, "GEAR", bundle, label)
 end
 
-function Sync.acceptOffer(syncId)
+function Sync.acceptOffer(syncId, replaceAll)
   local ib = inbound[syncId]
   if not ib or ib.state ~= "offered" then
     debug("Sync.acceptOffer: no pending offer id=" .. tostring(syncId))
     return
   end
+  ib.replaceAll = replaceAll and true or false
   ib.state = "accepted"
-  debug(string.format("Sync.acceptOffer id=%s sender=%s", syncId, tostring(ib.sender)))
+  debug(string.format("Sync.acceptOffer id=%s sender=%s replaceAll=%s",
+    syncId, tostring(ib.sender), tostring(ib.replaceAll)))
   sendTo(ib.sender, Protocol.packAccept(syncId))
 end
 
@@ -194,19 +212,31 @@ local function applyInbound(syncId, ib, encoded)
   bundle.mode = ib.mode
 
   local DB = TuskUpLoot.DB
-  if not DB or not DB.applySyncBundle then
+  if not DB then
     chat("Sync failed: database unavailable.")
     clearInbound(syncId)
     return
   end
 
-  local stats = DB.applySyncBundle(bundle)
-  clearInbound(syncId)
-
-  chat(string.format("Sync from %s applied (%d gear set(s) updated, %d skipped).",
-    ib.sender or "unknown",
-    stats and stats.updated or 0,
-    stats and stats.skipped or 0))
+  local stats
+  if ib.replaceAll and DB.replaceFromSyncBundle then
+    stats = DB.replaceFromSyncBundle(bundle)
+    clearInbound(syncId)
+    chat(string.format("Sync from %s replaced all saved data (%d gear set(s) applied).",
+      ib.sender or "unknown",
+      stats and stats.updated or 0))
+  elseif DB.applySyncBundle then
+    stats = DB.applySyncBundle(bundle)
+    clearInbound(syncId)
+    chat(string.format("Sync from %s applied (%d gear set(s) updated, %d skipped).",
+      ib.sender or "unknown",
+      stats and stats.updated or 0,
+      stats and stats.skipped or 0))
+  else
+    chat("Sync failed: database unavailable.")
+    clearInbound(syncId)
+    return
+  end
   debug(string.format("Sync.applyInbound done updated=%d skipped=%d mode=%s",
     stats and stats.updated or 0,
     stats and stats.skipped or 0,
@@ -340,13 +370,21 @@ function Sync.init()
   debug("Sync.init: registered prefix " .. PREFIX)
 end
 
-function Sync.openPushFullPicker()
-  debug("Sync.openPushFullPicker")
-  if TuskUpLoot.UI and TuskUpLoot.UI.showSyncPicker then
-    TuskUpLoot.UI.showSyncPicker(function(name)
-      Sync.pushFull(name)
-    end)
+function Sync.openPushPicker()
+  debug("Sync.openPushPicker")
+  if TuskUpLoot.UI and TuskUpLoot.UI.ensureSyncPushFrame then
+    TuskUpLoot.UI.ensureSyncPushFrame()
+    if TuskUpLoot.UI.syncPushFrame then
+      if TuskUpLoot.UI.frame and TuskUpLoot.UI.frame:IsShown() then
+        TuskUpLoot.UI.frame:Hide()
+      end
+      TuskUpLoot.UI.syncPushFrame:Show()
+    end
   end
+end
+
+function Sync.openPushFullPicker()
+  Sync.openPushPicker()
 end
 
 function Sync.openPushGearSetPicker(characterKey, gearSetKey)

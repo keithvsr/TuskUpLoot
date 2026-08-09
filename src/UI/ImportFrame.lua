@@ -40,6 +40,10 @@ function UI.ensureImportFrame()
     imp:StopMovingOrSizing()
   end)
 
+  imp:SetScript("OnShow", function()
+    Util.bringUISpecialFrameToFront("TuskUpLootImportFrame")
+  end)
+
   imp:SetScript("OnHide", function()
     if UI.frame and not UI.frame:IsShown() then
       UI.frame:Show()
@@ -160,11 +164,7 @@ function UI.ensureImportFrame()
   end)
 
   Util.setCloseButtonPlacement(imp)
-  -- local closeBtn = _G["TuskUpLootImportFrameCloseButton"] or _G["TuskUpLootImportFrameClose"]
-  -- if closeBtn then
-  --   closeBtn:ClearAllPoints()
-  --   closeBtn:SetPoint("TOPRIGHT", imp, "TOPRIGHT", 2, 1)
-  -- end
+  Util.ensureUISpecialFrame("TuskUpLootImportFrame")
 
   UI.importFrame = imp
 end

@@ -4,10 +4,10 @@ local UI = TuskUpLoot.UI
 local Util = UI.Util
 
 function UI.getCharListSortDescending()
-  if (UI.charListSortBy or "name") == "manual" then
+  if (UI.charListSortBy or "recent") == "manual" or (UI.charListSortBy or "recent") == "recent" then
     return false
   end
-  if (UI.charListSortBy or "name") == "class" then
+  if (UI.charListSortBy or "recent") == "class" then
     return UI.charListSortClassDescending or false
   end
   return UI.charListSortNameDescending or false
@@ -17,7 +17,7 @@ local function styleCharSortButton(btn, sortKey, label)
   if not btn or not btn.text then
     return
   end
-  local sortBy = UI.charListSortBy or "name"
+  local sortBy = UI.charListSortBy or "recent"
   local active = (sortBy == sortKey)
   local descending = false
   if sortKey ~= "manual" then
@@ -40,6 +40,7 @@ local function styleCharSortButton(btn, sortKey, label)
 end
 
 function UI.updateCharSortButtonStyles()
+  styleCharSortButton(UI.charSortRecentBtn, "recent", "Recent")
   styleCharSortButton(UI.charSortNameBtn, "name", "Name")
   styleCharSortButton(UI.charSortClassBtn, "class", "Class")
   styleCharSortButton(UI.charSortManualBtn, "manual", "Manual")
@@ -48,7 +49,7 @@ end
 function UI.updateCharManualOrderControls()
   local onChars = (UI.activeTab == "characters")
   local showPush = onChars
-  local showManualReset = onChars and ((UI.charListSortBy or "name") == "manual")
+  local showManualReset = onChars and ((UI.charListSortBy or "recent") == "manual")
 
   if UI.pushDataBtn then
     UI.pushDataBtn:SetShown(showPush)

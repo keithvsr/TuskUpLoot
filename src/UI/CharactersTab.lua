@@ -4,7 +4,129 @@ local UI = TuskUpLoot.UI
 local Util = UI.Util
 local C = UI.Constants
 
+UI.collapsedGearSets = UI.collapsedGearSets or {}
+
 local CHAR_DRAG_THRESHOLD = 5
+
+StaticPopupDialogs["TUSKUPLOOT_REMOVE_CHARACTER"] = {
+  text = "Remove %s and all gear sets?",
+  button1 = YES,
+  button2 = NO,
+  OnAccept = function(self)
+    local data = self.data
+    if not data or not data.characterKey then
+      return
+    end
+    local DB = TuskUpLoot.DB
+    if DB and DB.removeCharacter(data.characterKey) then
+      if UI.selectedCharacterKey == data.characterKey then
+        UI.setSelectedCharacter(nil)
+      end
+      UI.rebuildCharacterList()
+      UI.renderCharacterPanel()
+      if UI.rebuildItemList then
+        UI.rebuildItemList()
+      end
+      if UI.activeTab == "raids" and UI.renderEncounterLootPanel then
+        UI.renderEncounterLootPanel()
+      end
+    end
+  end,
+  timeout = 0,
+  whileDead = 1,
+  hideOnEscape = 1,
+  preferredIndex = 3,
+}
+
+StaticPopupDialogs["TUSKUPLOOT_RENAME_CHARACTER"] = {
+  text = "Enter display name for %s:",
+  button1 = OKAY,
+  button2 = CANCEL,
+  hasEditBox = 1,
+  maxLetters = 32,
+  OnAccept = function(self)
+    local data = self.data
+    if not data or not data.characterKey then
+      return
+    end
+    local newName = self.editBox and self.editBox:GetText() or ""
+    newName = newName:gsub("^%s+", ""):gsub("%s+$", "")
+    if newName == "" then
+      Util.safeChatPrint("Name cannot be empty.")
+      return
+    end
+    local DB = TuskUpLoot.DB
+    if DB and DB.renameCharacter(data.characterKey, newName) then
+      UI.renderCharacterPanel()
+      UI.rebuildCharacterList()
+    end
+  end,
+  EditBoxOnEnterPressed = function(self)
+    local parent = self:GetParent()
+    if parent and parent.button1 and parent.button1:IsEnabled() then
+      parent.button1:Click()
+    end
+  end,
+  OnShow = function(self)
+    if self.editBox and self.data and self.data.currentName then
+      self.editBox:SetText(self.data.currentName)
+      self.editBox:HighlightText()
+    end
+  end,
+  timeout = 0,
+  whileDead = 1,
+  hideOnEscape = 1,
+  preferredIndex = 3,
+}
+
+local function isGearSetCollapsed(characterKey, gearSetKey)
+  local byChar = UI.collapsedGearSets[characterKey]
+  return byChar and byChar[gearSetKey]
+end
+
+local function toggleGearSetCollapsed(characterKey, gearSetKey)
+  UI.collapsedGearSets[characterKey] = UI.collapsedGearSets[characterKey] or {}
+  local byChar = UI.collapsedGearSets[characterKey]
+  byChar[gearSetKey] = not byChar[gearSetKey]
+end
+
+local function gearSetCollapsePrefix(characterKey, gearSetKey)
+  if isGearSetCollapsed(characterKey, gearSetKey) then
+    return "[+] "
+  end
+  return "[-] "
+end
+
+local function bindCharacterActionButtons(characterKey, character)
+  if UI.charRemoveBtn then
+    UI.charRemoveBtn:Show()
+    UI.charRemoveBtn:SetScript("OnClick", function()
+      StaticPopup_Show("TUSKUPLOOT_REMOVE_CHARACTER",
+        character.name or characterKey, nil, { characterKey = characterKey })
+    end)
+  end
+  if UI.charRenameBtn then
+    UI.charRenameBtn:Show()
+    UI.charRenameBtn:SetScript("OnClick", function()
+      StaticPopup_Show("TUSKUPLOOT_RENAME_CHARACTER",
+        character.name or characterKey, nil, {
+          characterKey = characterKey,
+          currentName = character.name or characterKey,
+        })
+    end)
+  end
+end
+
+local function hideCharacterActionButtons()
+  if UI.charRemoveBtn then
+    UI.charRemoveBtn:Hide()
+    UI.charRemoveBtn:SetScript("OnClick", nil)
+  end
+  if UI.charRenameBtn then
+    UI.charRenameBtn:Hide()
+    UI.charRenameBtn:SetScript("OnClick", nil)
+  end
+end
 
 local function clearCharListDragState(container)
   if not container then
@@ -220,6 +342,7 @@ function UI.renderCharacterPanel()
 
   if character then
     setCharacterSummary(Util.formatCharacterSummaryLine(character, selectedKey))
+    bindCharacterActionButtons(selectedKey, character)
 
     local container = UI.charGearContainer
     if not container then
@@ -292,9 +415,20 @@ function UI.renderCharacterPanel()
           headerRow:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -y)
           headerRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
           headerRow.label:SetPoint("RIGHT", headerRow.pushBtn, "LEFT", -4, 0)
-          headerRow.label:SetText(string.format("--- %s (phase %s) ---",
-            gs.name or row.key, tostring(gs.phase or "?")))
           local gsKeyCapture = row.key
+          local charKeyCapture = selectedKey
+          headerRow.label:SetText(gearSetCollapsePrefix(charKeyCapture, gsKeyCapture)
+            .. string.format("%s (phase %s)",
+              gs.name or row.key, tostring(gs.phase or "?")))
+          if not headerRow.toggleBtn then
+            headerRow.toggleBtn = CreateFrame("Button", nil, headerRow)
+            headerRow.toggleBtn:SetPoint("TOPLEFT", headerRow.label, "TOPLEFT", 0, 0)
+            headerRow.toggleBtn:SetPoint("BOTTOMRIGHT", headerRow.label, "BOTTOMRIGHT", 0, 0)
+          end
+          headerRow.toggleBtn:SetScript("OnClick", function()
+            toggleGearSetCollapsed(charKeyCapture, gsKeyCapture)
+            UI.renderCharacterPanel()
+          end)
           headerRow.removeBtn:SetScript("OnClick", function()
             if DB.removeGearSet(selectedKey, gsKeyCapture) then
               UI.renderCharacterPanel()
@@ -310,6 +444,7 @@ function UI.renderCharacterPanel()
           headerRow:Show()
           y = y + btnHeight + sectionGap
 
+          local collapsed = isGearSetCollapsed(charKeyCapture, gsKeyCapture)
           for _, entry in ipairs(Util.gearSetEntriesInDisplayOrder(gs.items)) do
             local id = entry.itemId
             gearRowIndex = gearRowIndex + 1
@@ -344,10 +479,16 @@ function UI.renderCharacterPanel()
               refreshAfterDataChange()
             end)
 
-            gearRow:Show()
-            y = y + btnHeight
+            if collapsed then
+              gearRow:Hide()
+            else
+              gearRow:Show()
+              y = y + btnHeight
+            end
           end
-          y = y + sectionGap
+          if not collapsed then
+            y = y + sectionGap
+          end
         end
       end
     end
@@ -356,6 +497,8 @@ function UI.renderCharacterPanel()
     setScrollContentHeight(y)
     return
   end
+
+  hideCharacterActionButtons()
 
   clearCharGearContainer()
 
@@ -409,7 +552,7 @@ function UI.resetManualCharacterOrder()
 end
 
 function UI.setCharListSortBy(sortBy)
-  if sortBy ~= "name" and sortBy ~= "class" and sortBy ~= "manual" then
+  if sortBy ~= "name" and sortBy ~= "class" and sortBy ~= "manual" and sortBy ~= "recent" then
     return
   end
   if sortBy == "manual" then
@@ -454,10 +597,10 @@ function UI.rebuildCharacterList()
 
   local rows = DB.characterNamesAndClasses() or {}
   local manualSortKeys
-  if (UI.charListSortBy or "name") == "manual" then
+  if (UI.charListSortBy or "recent") == "manual" then
     manualSortKeys = DB.ensureManualSortList()
   end
-  Util.sortCharacterRows(rows, UI.charListSortBy or "name", UI.getCharListSortDescending(), manualSortKeys)
+  Util.sortCharacterRows(rows, UI.charListSortBy or "recent", UI.getCharListSortDescending(), manualSortKeys)
   local needle = Util.filterNeedle()
   local y = -6
   local btnHeight = 18

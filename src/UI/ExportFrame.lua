@@ -80,10 +80,26 @@ function UI.ensureExportFrame()
     exp:StopMovingOrSizing()
   end)
 
+  exp:SetScript("OnShow", function()
+    Util.bringUISpecialFrameToFront("TuskUpLootExportFrame")
+  end)
+
   exp:SetScript("OnHide", function()
+    if UI.exportEditBox then
+      UI.exportEditBox:ClearFocus()
+      UI.exportEditBox:HighlightText(0, 0)
+    end
     if UI.frame and not UI.frame:IsShown() then
       UI.frame:Show()
     end
+  end)
+
+  Util.bindFrameEscapeDismiss(exp, function(frame)
+    if UI.exportEditBox then
+      UI.exportEditBox:ClearFocus()
+      UI.exportEditBox:HighlightText(0, 0)
+    end
+    frame:Hide()
   end)
 
   local title = exp:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -194,6 +210,10 @@ function UI.ensureExportFrame()
   editBox:SetPoint("TOPLEFT", editChild, "TOPLEFT", 6, -6)
   editBox:SetScript("OnEscapePressed", function(selfEd)
     selfEd:ClearFocus()
+    selfEd:HighlightText(0, 0)
+    if UI.exportFrame then
+      UI.exportFrame:Hide()
+    end
   end)
   editBox:SetTextInsets(4, 4, 4, 4)
   editBox:EnableMouse(true)
@@ -256,6 +276,7 @@ function UI.ensureExportFrame()
   end)
 
   Util.setCloseButtonPlacement(exp)
+  Util.ensureUISpecialFrame("TuskUpLootExportFrame")
 
   UI.exportFrame = exp
 end

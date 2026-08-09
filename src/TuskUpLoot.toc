@@ -39,6 +39,7 @@ UI/OptionsTab.lua
 UI/Tabs.lua
 UI/ImportFrame.lua
 UI/ExportFrame.lua
+UI/SyncPushFrame.lua
 UI/SyncOffer.lua
 UI/SyncPicker.lua
 UI/MainFrame.lua

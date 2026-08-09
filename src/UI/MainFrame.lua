@@ -133,9 +133,9 @@ function UI.ensureFrame()
   charSortBar:Hide()
   UI.charSortBar = charSortBar
 
-  local function createCharSortButton(parent, label, sortKey, xOffset)
+  local function createCharSortButton(parent, label, sortKey, xOffset, width)
     local btn = CreateFrame("Button", nil, parent)
-    btn:SetSize(52, 18)
+    btn:SetSize(width or 46, 18)
     btn:SetPoint("LEFT", parent, "LEFT", xOffset, 0)
     btn.sortKey = sortKey
     btn.baseLabel = label
@@ -160,7 +160,7 @@ function UI.ensureFrame()
       UI.setCharListSortBy(sortKey)
     end)
     btn:SetScript("OnEnter", function()
-      if (UI.charListSortBy or "name") ~= sortKey then
+      if (UI.charListSortBy or "recent") ~= sortKey then
         btn.text:SetText("|cffbbbbbb" .. label .. "|r")
       end
     end)
@@ -170,9 +170,10 @@ function UI.ensureFrame()
     return btn
   end
 
-  UI.charSortNameBtn = createCharSortButton(charSortBar, "Name", "name", 0)
-  UI.charSortClassBtn = createCharSortButton(charSortBar, "Class", "class", 54)
-  UI.charSortManualBtn = createCharSortButton(charSortBar, "Manual", "manual", 108)
+  UI.charSortRecentBtn = createCharSortButton(charSortBar, "Recent", "recent", 0)
+  UI.charSortNameBtn = createCharSortButton(charSortBar, "Name", "name", 48)
+  UI.charSortClassBtn = createCharSortButton(charSortBar, "Class", "class", 96)
+  UI.charSortManualBtn = createCharSortButton(charSortBar, "Manual", "manual", 144)
 
   local scrollTop = -(C.TAB_HEIGHT + 72)
 
@@ -182,8 +183,8 @@ function UI.ensureFrame()
   pushDataBtn:SetText("Push data")
   pushDataBtn:Hide()
   pushDataBtn:SetScript("OnClick", function()
-    if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushFullPicker then
-      TuskUpLoot.Sync.openPushFullPicker()
+    if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushPicker then
+      TuskUpLoot.Sync.openPushPicker()
     end
   end)
   UI.pushDataBtn = pushDataBtn
@@ -240,7 +241,7 @@ function UI.ensureFrame()
   UI.detailSectionLabel = detailSectionLabel
 
   local charInfoHeader = CreateFrame("Frame", nil, f)
-  charInfoHeader:SetHeight(20)
+  charInfoHeader:SetHeight(22)
   charInfoHeader:SetPoint("TOPLEFT", f, "TOPLEFT", C.CONTENT_X, -58)
   charInfoHeader:SetPoint("TOPRIGHT", f, "TOPRIGHT", -C.MARGIN_R, -58)
   charInfoHeader:Hide()
@@ -248,12 +249,33 @@ function UI.ensureFrame()
 
   local charSummaryFS = charInfoHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   charSummaryFS:SetPoint("LEFT", charInfoHeader, "LEFT", 0, 0)
-  charSummaryFS:SetPoint("RIGHT", charInfoHeader, "RIGHT", 0, 0)
   charSummaryFS:SetJustifyH("LEFT")
   charSummaryFS:SetJustifyV("MIDDLE")
   charSummaryFS:SetWordWrap(false)
   UI.charSummaryFS = charSummaryFS
   UI.charDetailFS = charSummaryFS
+
+  local charRemoveBtn = CreateFrame("Button", nil, charInfoHeader, "UIPanelButtonTemplate")
+  charRemoveBtn:SetSize(58, 18)
+  charRemoveBtn:SetPoint("RIGHT", charInfoHeader, "RIGHT", 0, 0)
+  charRemoveBtn:SetText("Remove")
+  local removeFont = charRemoveBtn.GetFontString and charRemoveBtn:GetFontString()
+  if removeFont and removeFont.SetFontObject then
+    removeFont:SetFontObject(ChatFontSmall)
+  end
+  UI.charRemoveBtn = charRemoveBtn
+
+  local charRenameBtn = CreateFrame("Button", nil, charInfoHeader, "UIPanelButtonTemplate")
+  charRenameBtn:SetSize(54, 18)
+  charRenameBtn:SetPoint("RIGHT", charRemoveBtn, "LEFT", -4, 0)
+  charRenameBtn:SetText("Rename")
+  local renameFont = charRenameBtn.GetFontString and charRenameBtn:GetFontString()
+  if renameFont and renameFont.SetFontObject then
+    renameFont:SetFontObject(ChatFontSmall)
+  end
+  UI.charRenameBtn = charRenameBtn
+
+  charSummaryFS:SetPoint("RIGHT", charRenameBtn, "LEFT", -8, 0)
 
   local detailHeader = CreateFrame("Frame", nil, f)
   detailHeader:SetHeight(36)
@@ -392,7 +414,7 @@ function UI.ensureFrame()
   -- end
 
   ---@diagnostic disable-next-line: undefined-global
-  table.insert(UISpecialFrames, "TuskUpLootMainFrame")
+  Util.ensureUISpecialFrame("TuskUpLootMainFrame")
 
   local encounterLootContainer = CreateFrame("Frame", nil, detailScrollChild)
   encounterLootContainer:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 0, 0)
@@ -448,15 +470,6 @@ function UI.ensureFrame()
   UI.detailBackBtn = backBtn
 
   f:SetScript("OnHide", function()
-    if UI.syncPickerFrame then
-      UI.syncPickerFrame:Hide()
-    end
-    if UI.importFrame then
-      UI.importFrame:Hide()
-    end
-    if UI.exportFrame then
-      UI.exportFrame:Hide()
-    end
     if StaticPopup_Hide then
       StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
     end
@@ -488,5 +501,6 @@ function UI.toggle()
     UI.dismissAllFrames()
   else
     UI.frame:Show()
+    Util.bringUISpecialFrameToFront("TuskUpLootMainFrame")
   end
 end

@@ -138,16 +138,7 @@ function UI.ensureSyncPickerFrame()
   f:Hide()
 
   if UISpecialFrames then
-    local found = false
-    for _, name in ipairs(UISpecialFrames) do
-      if name == "TuskUpLootSyncPickerFrame" then
-        found = true
-        break
-      end
-    end
-    if not found then
-      table.insert(UISpecialFrames, "TuskUpLootSyncPickerFrame")
-    end
+    Util.ensureUISpecialFrame("TuskUpLootSyncPickerFrame")
   end
 
   Util.setCloseButtonPlacement(f)
@@ -195,6 +186,8 @@ function UI.ensureSyncPickerFrame()
   UI.syncPickerContainer = container
 
   f:SetScript("OnShow", function()
+    Util.suspendMainUISpecialFrame()
+    Util.bringUISpecialFrameToFront("TuskUpLootSyncPickerFrame")
     requestGuildRoster()
     UI.rebuildSyncPickerList()
   end)
@@ -202,7 +195,10 @@ function UI.ensureSyncPickerFrame()
   f:SetScript("OnHide", function()
     f:UnregisterEvent("GUILD_ROSTER_UPDATE")
     pendingCallback = nil
+    Util.resumeMainUISpecialFrame()
   end)
+
+  Util.bindFrameEscapeDismiss(f)
 end
 
 function UI.showSyncPicker(onSelect)

@@ -76,6 +76,11 @@ function Util.updateFrameTitle()
 end
 
 function UI.dismissAllFrames()
+  if StaticPopup_Hide then
+    StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+    StaticPopup_Hide("TUSKUPLOOT_REMOVE_CHARACTER")
+    StaticPopup_Hide("TUSKUPLOOT_RENAME_CHARACTER")
+  end
   if UI.syncPickerFrame then
     UI.syncPickerFrame:Hide()
   end
@@ -85,12 +90,116 @@ function UI.dismissAllFrames()
   if UI.exportFrame then
     UI.exportFrame:Hide()
   end
-  if StaticPopup_Hide then
-    StaticPopup_Hide("TUSKUPLOOT_SYNC_OFFER")
+  if UI.syncPushFrame then
+    UI.syncPushFrame:Hide()
   end
   if UI.frame then
     UI.frame:Hide()
   end
+end
+
+local DISMISS_LAYERS = {
+  function()
+    if not StaticPopup_Visible then
+      return false
+    end
+    for _, key in ipairs({
+      "TUSKUPLOOT_SYNC_OFFER",
+      "TUSKUPLOOT_REMOVE_CHARACTER",
+      "TUSKUPLOOT_RENAME_CHARACTER",
+    }) do
+      if StaticPopup_Visible(key) then
+        StaticPopup_Hide(key)
+        return true
+      end
+    end
+    return false
+  end,
+  function() return UI.syncPickerFrame end,
+  function() return UI.syncPushFrame end,
+  function() return UI.exportFrame end,
+  function() return UI.importFrame end,
+  function() return UI.frame end,
+}
+
+function UI.dismissTopmostFrame()
+  for _, layer in ipairs(DISMISS_LAYERS) do
+    local result = layer()
+    if result == true then
+      return true
+    end
+    if type(result) == "table" and result.IsShown and result:IsShown() then
+      result:Hide()
+      return true
+    end
+  end
+  return false
+end
+
+function Util.ensureUISpecialFrame(frameName)
+  if not UISpecialFrames or not frameName then
+    return
+  end
+  for _, name in ipairs(UISpecialFrames) do
+    if name == frameName then
+      return
+    end
+  end
+  table.insert(UISpecialFrames, frameName)
+end
+
+function Util.bringUISpecialFrameToFront(frameName)
+  if not UISpecialFrames or not frameName then
+    return
+  end
+  Util.ensureUISpecialFrame(frameName)
+  for i, name in ipairs(UISpecialFrames) do
+    if name == frameName then
+      table.remove(UISpecialFrames, i)
+      break
+    end
+  end
+  table.insert(UISpecialFrames, frameName)
+end
+
+function Util.suspendMainUISpecialFrame()
+  if not UISpecialFrames or UI.mainFrameSpecialSuspended then
+    return
+  end
+  for i, name in ipairs(UISpecialFrames) do
+    if name == "TuskUpLootMainFrame" then
+      table.remove(UISpecialFrames, i)
+      UI.mainFrameSpecialSuspended = true
+      return
+    end
+  end
+end
+
+function Util.resumeMainUISpecialFrame()
+  if not UISpecialFrames or not UI.mainFrameSpecialSuspended then
+    return
+  end
+  Util.ensureUISpecialFrame("TuskUpLootMainFrame")
+  UI.mainFrameSpecialSuspended = nil
+end
+
+function Util.bindFrameEscapeDismiss(frame, onDismiss)
+  if not frame then
+    return
+  end
+  frame:EnableKeyboard(true)
+  frame:SetScript("OnKeyDown", function(self, key)
+    if key == "ESCAPE" then
+      self:SetPropagateKeyboardInput(false)
+      if onDismiss then
+        onDismiss(self)
+      else
+        self:Hide()
+      end
+    else
+      self:SetPropagateKeyboardInput(true)
+    end
+  end)
 end
 
 function Util.getCachedItem(itemId)
@@ -607,6 +716,15 @@ function Util.sortCharacterRows(rows, sortBy, descending, manualSortKeys)
       local bClass = characterRowClass(b)
       if aClass ~= bClass then
         return aClass < bClass
+      end
+      return characterRowName(a) < characterRowName(b)
+    end
+    if sortBy == "recent" then
+      local DB = TuskUpLoot.DB
+      local aAt = DB and DB.characterLatestActivityAt and DB.characterLatestActivityAt(a.key) or 0
+      local bAt = DB and DB.characterLatestActivityAt and DB.characterLatestActivityAt(b.key) or 0
+      if aAt ~= bAt then
+        return aAt > bAt
       end
       return characterRowName(a) < characterRowName(b)
     end

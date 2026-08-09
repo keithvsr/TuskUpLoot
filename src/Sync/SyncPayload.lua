@@ -141,3 +141,56 @@ function Payload.buildGearSetBundle(characterKey, gearSetKey)
 
   return bundle
 end
+
+local function itemReferencesCharacter(item, characterKeys)
+  if type(item) ~= "table" or type(item.characters) ~= "table" then
+    return false
+  end
+  for characterKey in pairs(characterKeys) do
+    if item.characters[characterKey] then
+      return true
+    end
+  end
+  return false
+end
+
+function Payload.buildSelectedCharactersBundle(characterKeys)
+  if not TuskUpLootDB or type(TuskUpLootDB) ~= "table" then
+    return nil
+  end
+  if type(characterKeys) ~= "table" or #characterKeys == 0 then
+    return nil
+  end
+
+  local selected = {}
+  for _, characterKey in ipairs(characterKeys) do
+    if type(characterKey) == "string"
+        and TuskUpLootDB.characters
+        and TuskUpLootDB.characters[characterKey] then
+      selected[characterKey] = true
+    end
+  end
+  if next(selected) == nil then
+    return nil
+  end
+
+  local bundle = {
+    mode = "PARTIAL",
+    characters = {},
+    items = {},
+  }
+
+  for characterKey in pairs(selected) do
+    bundle.characters[characterKey] = copyCharacter(TuskUpLootDB.characters[characterKey])
+  end
+
+  if TuskUpLootDB.items then
+    for itemId, item in pairs(TuskUpLootDB.items) do
+      if itemReferencesCharacter(item, selected) then
+        bundle.items[itemId] = copyItem(item)
+      end
+    end
+  end
+
+  return bundle
+end
