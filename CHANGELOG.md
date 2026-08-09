@@ -1,5 +1,13 @@
 # TuskUpLoot
 
+## 1.4.2
+- Characters: remove characters and all their associated gearsets
+- Characters: clean up character gearset list views
+- Characters: update a character's name (for ex to match Gargul)
+- Sync: select what users to offer in data sync
+- Sync: ability to overwrite all existing data with offered sync data
+- Data: reset data to default state from the options tab (danger zone)
+
 ## 1.4.1
 - Wherein the addon becomes able to export loot needs to a Gargul import sting
 - Small addon broadcast fixes
