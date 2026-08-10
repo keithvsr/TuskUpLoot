@@ -22,6 +22,7 @@ Opts/TuskUpLootOpts.lua
 ItemCache.lua
 Import/TuskUpLootParser.lua
 Import/TuskUpLootImporter.lua
+Import/GL.lua
 Export/GL.lua
 Sync/SyncCodec.lua
 Sync/SyncPayload.lua

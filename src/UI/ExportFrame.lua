@@ -242,13 +242,13 @@ function UI.ensureExportFrame()
       return
     end
 
-    local GL = TuskUpLoot.Export and TuskUpLoot.Export.GL
-    if not GL or not GL.export then
+    local GL = TuskUpLoot.GL and TuskUpLoot.GL
+    if not GL.Export or not GL.Export.export then
       Util.safeChatPrint("Export module unavailable.")
       return
     end
 
-    local exportString, err, summary = GL.export(selected)
+    local exportString, err, summary = GL.Export.export(selected)
     if not exportString then
       Util.safeChatPrint("Export failed: " .. tostring(err or "unknown"))
       return
