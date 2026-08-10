@@ -1,9 +1,9 @@
 -- Handles exporting needed item data to Gargul addon using reverse-engineered
 -- formatting from softres.it style export strings
 
-TuskUpLoot.GL = TuskUpLoot.GL or {}
-local Export = {}
-TuskUpLoot.GL.Export = Export
+TuskUpLoot.Export = TuskUpLoot.Export or {}
+local GL = {}
+TuskUpLoot.Export.GL = GL
 
 local LibDeflate = LibStub("LibDeflate")
 local Data = TuskUpLoot.Data
@@ -119,7 +119,7 @@ local function buildSelectedSet(selectedInstanceIds)
   return selectedSet, count
 end
 
-function Export.buildSoftResPayload(selectedInstanceIds)
+function GL.buildSoftResPayload(selectedInstanceIds)
   local selectedSet, selectedCount = buildSelectedSet(selectedInstanceIds)
   if selectedCount == 0 then
     return nil, "select at least one raid"
@@ -210,16 +210,16 @@ end
 ---Encodes formatted lua data into a softres.it-style export string
 ---@param data table
 ---@return string
-function Export.encodeExportString(data)
+function GL.encodeExportString(data)
   local json = C_EncodingUtil.SerializeJSON(data)
   local compressed = LibDeflate:CompressZlib(json)
   return C_EncodingUtil.EncodeBase64(compressed)
 end
 
-function Export.export(selectedInstanceIds)
-  local payload, err, summary = Export.buildSoftResPayload(selectedInstanceIds)
+function GL.export(selectedInstanceIds)
+  local payload, err, summary = GL.buildSoftResPayload(selectedInstanceIds)
   if not payload then
     return nil, err, nil
   end
-  return Export.encodeExportString(payload), nil, summary
+  return GL.encodeExportString(payload), nil, summary
 end

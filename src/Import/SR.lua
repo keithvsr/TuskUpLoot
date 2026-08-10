@@ -1,9 +1,7 @@
 -- Handles importing SR data from softres.it in order to merge in
 -- non-guildy data if ever necessary
 
-TuskUpLoot.GL = TuskUpLoot.GL or {}
-local Import = {}
-TuskUpLoot.GL.Import = Import
+TuskUpLoot.SR = TuskUpLoot.SR or {}
 
 local LibDeflate = LibStub("LibDeflate")
 
@@ -13,7 +11,7 @@ local function decodeExportString(exportString)
     return C_EncodingUtil.DeserializeJSON(json)
 end
 
-function Import.import(softresString)
+function TuskUpLoot.SR.import(softresString)
     local data = decodeExportString(softresString)
     if not data then return {} end
     return data
