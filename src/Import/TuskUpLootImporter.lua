@@ -12,16 +12,24 @@ local function normalizeStringKey(name)
   return name:lower()
 end
 
+local function trimWhitespace(value)
+  if type(value) ~= "string" then
+    return value
+  end
+  return value:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 -- organize character data from export and return a normalized key and the character data
 local function extractCharacterDataFromExport(payload)
   if type(payload) ~= "table" or type(payload.character) ~= "table" or payload.character.name == nil then
     return nil, "invalid payload: missing character"
   end
   local character = payload.character
-  local characterKey = normalizeStringKey(character.name)
+  local trimmedName = trimWhitespace(character.name)
+  local characterKey = normalizeStringKey(trimmedName)
 
   local characterData = {
-    name = character.name,
+    name = trimmedName,
     level = character.level,
     race = character.race,                          -- i.e. Troll, Orc, Undead, etc
     class = character.class or character.gameClass, -- i.e. Warrior, Rogue, Priest, etc
@@ -98,6 +106,12 @@ function IMP.import(jsonText)
   local characterKey, characterData = extractCharacterDataFromExport(payload)
   if not characterKey then
     return nil, characterData or "invalid character data"
+  end
+
+  local existingCharacter = TuskUpLootDB and TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if existingCharacter and type(existingCharacter.name) == "string" and existingCharacter.name ~= "" then
+    -- Preserve a manually-set display name across re-imports; characterKey lookup is unaffected.
+    characterData.name = nil
   end
 
   local gearSetKey, gearSet, acquiredItems = extractGearSetFromExport(payload)

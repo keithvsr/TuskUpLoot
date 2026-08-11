@@ -8,6 +8,49 @@ UI.collapsedGearSets = UI.collapsedGearSets or {}
 
 local CHAR_DRAG_THRESHOLD = 5
 
+local function getPopupEditBox(popup)
+  if not popup then
+    return nil
+  end
+  if popup.editBox then
+    return popup.editBox
+  end
+  local frameName = popup.GetName and popup:GetName()
+  if frameName then
+    return _G[frameName .. "EditBox"]
+  end
+  return nil
+end
+
+local function trimDisplayName(name)
+  if type(name) ~= "string" then
+    return ""
+  end
+  return name:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function applyCharacterRename(popup, data)
+  data = data or (popup and popup.data)
+  if not data or not data.characterKey then
+    return false
+  end
+
+  local editBox = getPopupEditBox(popup)
+  local newName = trimDisplayName(editBox and editBox:GetText() or "")
+  if newName == "" then
+    Util.safeChatPrint("Name cannot be empty.")
+    return false
+  end
+
+  local DB = TuskUpLoot.DB
+  if DB and DB.renameCharacter(data.characterKey, newName) then
+    UI.renderCharacterPanel()
+    UI.rebuildCharacterList()
+    return true
+  end
+  return false
+end
+
 StaticPopupDialogs["TUSKUPLOOT_REMOVE_CHARACTER"] = {
   text = "Remove %s and all gear sets?",
   button1 = YES,
@@ -44,33 +87,22 @@ StaticPopupDialogs["TUSKUPLOOT_RENAME_CHARACTER"] = {
   button2 = CANCEL,
   hasEditBox = 1,
   maxLetters = 32,
-  OnAccept = function(self)
-    local data = self.data
-    if not data or not data.characterKey then
-      return
-    end
-    local newName = self.editBox and self.editBox:GetText() or ""
-    newName = newName:gsub("^%s+", ""):gsub("%s+$", "")
-    if newName == "" then
-      Util.safeChatPrint("Name cannot be empty.")
-      return
-    end
-    local DB = TuskUpLoot.DB
-    if DB and DB.renameCharacter(data.characterKey, newName) then
-      UI.renderCharacterPanel()
-      UI.rebuildCharacterList()
-    end
+  OnAccept = function(self, data)
+    applyCharacterRename(self, data)
   end,
-  EditBoxOnEnterPressed = function(self)
+  EditBoxOnEnterPressed = function(self, data)
     local parent = self:GetParent()
-    if parent and parent.button1 and parent.button1:IsEnabled() then
-      parent.button1:Click()
+    if applyCharacterRename(parent, data) then
+      parent:Hide()
     end
   end,
-  OnShow = function(self)
-    if self.editBox and self.data and self.data.currentName then
-      self.editBox:SetText(self.data.currentName)
-      self.editBox:HighlightText()
+  OnShow = function(self, data)
+    data = data or self.data
+    local editBox = getPopupEditBox(self)
+    if editBox and data and data.currentName then
+      editBox:SetText(data.currentName)
+      editBox:HighlightText()
+      editBox:SetFocus()
     end
   end,
   timeout = 0,

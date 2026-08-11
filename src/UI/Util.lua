@@ -88,6 +88,9 @@ function UI.dismissAllFrames()
   if UI.importFrame then
     UI.importFrame:Hide()
   end
+  if UI.exportSRImportFrame then
+    UI.exportSRImportFrame:Hide()
+  end
   if UI.exportFrame then
     UI.exportFrame:Hide()
   end
@@ -119,6 +122,7 @@ local DISMISS_LAYERS = {
   end,
   function() return UI.syncPickerFrame end,
   function() return UI.syncPushFrame end,
+  function() return UI.exportSRImportFrame end,
   function() return UI.exportFrame end,
   function() return UI.importFrame end,
   function() return UI.frame end,

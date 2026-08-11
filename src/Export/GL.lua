@@ -20,6 +20,30 @@ local function getEmptyRaid()
   }
 end
 
+local function shallowCopyPayload(importedPayload)
+  local payload = {
+    hardreserves = {},
+    metadata = { id = "tuskuploot", instances = {} },
+    softreserves = {},
+  }
+
+  if type(importedPayload.hardreserves) == "table" then
+    for i, entry in ipairs(importedPayload.hardreserves) do
+      payload.hardreserves[i] = entry
+    end
+  end
+
+  return payload
+end
+
+local function sanitizeSoftResName(name)
+  if type(name) ~= "string" then
+    return ""
+  end
+  name = name:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%.", "")
+  return name
+end
+
 local function addInstanceForItem(map, itemId, instanceId)
   if not itemId or not instanceId then
     return
@@ -119,24 +143,39 @@ local function buildSelectedSet(selectedInstanceIds)
   return selectedSet, count
 end
 
-function GL.buildSoftResPayload(selectedInstanceIds)
-  local selectedSet, selectedCount = buildSelectedSet(selectedInstanceIds)
-  if selectedCount == 0 then
-    return nil, "select at least one raid"
-  end
-
-  local payload = getEmptyRaid()
-  local instanceMap = buildItemInstanceMap()
-
+local function buildMetadataInstances(selectedSet)
+  local instances = {}
   for _, instanceId in ipairs(Data.orderedInstanceIds()) do
     if selectedSet[instanceId] then
       local instance = Data.Instances[instanceId]
       if instance and instance.gargul_name then
-        payload.metadata.instances[#payload.metadata.instances + 1] = instance.gargul_name
+        instances[#instances + 1] = instance.gargul_name
       end
     end
   end
+  return instances
+end
 
+local function sortSoftReserves(softreserves)
+  table.sort(softreserves, function(a, b)
+    if a.class ~= b.class then
+      return a.class < b.class
+    end
+    return (a.name or "") < (b.name or "")
+  end)
+end
+
+local function countSoftResItems(softreserves)
+  local itemCount = 0
+  for _, entry in ipairs(softreserves) do
+    if type(entry.items) == "table" then
+      itemCount = itemCount + #entry.items
+    end
+  end
+  return itemCount
+end
+
+local function buildGuildSoftReserves(selectedSet, instanceMap)
   local byCharacter = {}
   local items = DB and DB.getItems and DB.getItems() or {}
 
@@ -152,7 +191,7 @@ function GL.buildSoftResPayload(selectedInstanceIds)
                 local entry = byCharacter[characterKey]
                 if not entry then
                   entry = {
-                    name = character.name,
+                    name = sanitizeSoftResName(character.name),
                     class = string.lower(character.class or ""),
                     itemsById = {},
                   }
@@ -187,23 +226,162 @@ function GL.buildSoftResPayload(selectedInstanceIds)
     end
   end
 
-  table.sort(softreserves, function(a, b)
-    if a.class ~= b.class then
-      return a.class < b.class
+  sortSoftReserves(softreserves)
+  return softreserves
+end
+
+local function itemAllowedForSelection(itemId, selectedSet, instanceMap)
+  if not itemId then
+    return false
+  end
+  local exportId = resolveExportItemId(itemId)
+  if itemMatchesSelectedInstances(exportId, selectedSet, instanceMap) then
+    return true
+  end
+  if not getInstancesForItem(exportId, instanceMap) then
+    return true
+  end
+  return false
+end
+
+local function filterSoftResItemsBySelection(softreserves, selectedSet, instanceMap)
+  local filtered = {}
+
+  for _, entry in ipairs(softreserves or {}) do
+    if type(entry) == "table" and type(entry.name) == "string" then
+      local itemsList = {}
+      local itemsById = {}
+
+      if type(entry.items) == "table" then
+        for _, itemEntry in ipairs(entry.items) do
+          local itemId = type(itemEntry) == "table" and itemEntry.id or nil
+          if itemId and not itemsById[itemId] and itemAllowedForSelection(itemId, selectedSet, instanceMap) then
+            itemsById[itemId] = true
+            itemsList[#itemsList + 1] = { id = itemId }
+          end
+        end
+      end
+
+      table.sort(itemsList, function(a, b)
+        return a.id < b.id
+      end)
+
+      if #itemsList > 0 then
+        filtered[#filtered + 1] = {
+          name = sanitizeSoftResName(entry.name),
+          class = string.lower(entry.class or ""),
+          items = itemsList,
+        }
+      end
     end
-    return (a.name or "") < (b.name or "")
-  end)
-
-  payload.softreserves = softreserves
-
-  local itemCount = 0
-  for _, entry in ipairs(softreserves) do
-    itemCount = itemCount + #entry.items
   end
 
+  sortSoftReserves(filtered)
+  return filtered
+end
+
+local function mergeSoftReserves(imported, guild)
+  local byName = {}
+
+  local function addEntry(entry, preferClass)
+    if type(entry) ~= "table" or type(entry.name) ~= "string" then
+      return
+    end
+
+    local sanitizedName = sanitizeSoftResName(entry.name)
+    if sanitizedName == "" then
+      return
+    end
+
+    local key = string.lower(sanitizedName)
+    local merged = byName[key]
+    if not merged then
+      merged = {
+        name = sanitizedName,
+        class = string.lower(entry.class or ""),
+        itemsById = {},
+      }
+      byName[key] = merged
+    end
+
+    if preferClass and entry.class and entry.class ~= "" then
+      merged.class = string.lower(entry.class)
+    elseif (merged.class == nil or merged.class == "") and entry.class and entry.class ~= "" then
+      merged.class = string.lower(entry.class)
+    end
+
+    if type(entry.items) == "table" then
+      for _, itemEntry in ipairs(entry.items) do
+        local itemId = type(itemEntry) == "table" and itemEntry.id or nil
+        if itemId and not merged.itemsById[itemId] then
+          merged.itemsById[itemId] = true
+        end
+      end
+    end
+  end
+
+  for _, entry in ipairs(imported or {}) do
+    addEntry(entry, false)
+  end
+  for _, entry in ipairs(guild or {}) do
+    addEntry(entry, true)
+  end
+
+  local softreserves = {}
+  for _, entry in pairs(byName) do
+    local itemsList = {}
+    for itemId in pairs(entry.itemsById) do
+      itemsList[#itemsList + 1] = { id = itemId }
+    end
+    table.sort(itemsList, function(a, b)
+      return a.id < b.id
+    end)
+    if #itemsList > 0 then
+      softreserves[#softreserves + 1] = {
+        name = entry.name,
+        class = entry.class,
+        items = itemsList,
+      }
+    end
+  end
+
+  sortSoftReserves(softreserves)
+  return softreserves
+end
+
+function GL.buildSoftResPayload(selectedInstanceIds, importedPayload)
+  local selectedSet, selectedCount = buildSelectedSet(selectedInstanceIds)
+  if selectedCount == 0 then
+    return nil, "select at least one raid"
+  end
+
+  local instanceMap = buildItemInstanceMap()
+  local payload
+  if type(importedPayload) == "table" then
+    payload = shallowCopyPayload(importedPayload)
+  else
+    payload = getEmptyRaid()
+  end
+
+  payload.metadata = payload.metadata or { id = "tuskuploot", instances = {} }
+  payload.metadata.id = "tuskuploot"
+  payload.metadata.instances = buildMetadataInstances(selectedSet)
+
+  local guildSoftreserves = buildGuildSoftReserves(selectedSet, instanceMap)
+  local importedSoftreserves = {}
+  if type(importedPayload) == "table" and type(importedPayload.softreserves) == "table" then
+    importedSoftreserves = filterSoftResItemsBySelection(
+      importedPayload.softreserves,
+      selectedSet,
+      instanceMap
+    )
+  end
+
+  payload.softreserves = mergeSoftReserves(importedSoftreserves, guildSoftreserves)
+
   return payload, nil, {
-    playerCount = #softreserves,
-    itemCount = itemCount,
+    playerCount = #payload.softreserves,
+    itemCount = countSoftResItems(payload.softreserves),
   }
 end
 
@@ -216,8 +394,8 @@ function GL.encodeExportString(data)
   return C_EncodingUtil.EncodeBase64(compressed)
 end
 
-function GL.export(selectedInstanceIds)
-  local payload, err, summary = GL.buildSoftResPayload(selectedInstanceIds)
+function GL.export(selectedInstanceIds, importedPayload)
+  local payload, err, summary = GL.buildSoftResPayload(selectedInstanceIds, importedPayload)
   if not payload then
     return nil, err, nil
   end

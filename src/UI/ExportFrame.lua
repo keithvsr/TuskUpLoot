@@ -7,7 +7,10 @@ local Data = TuskUpLoot.Data
 
 local sessionSelectedInstances = {}
 
+UI.exportImportedSR = UI.exportImportedSR or nil
+
 local function hideExportFrameShowMain()
+  UI.exportImportedSR = nil
   if UI.exportFrame then
     UI.exportFrame:Hide()
   end
@@ -53,6 +56,54 @@ local function restoreCheckboxState(check, instanceId)
   check:SetChecked(checked)
 end
 
+local function applyInstanceSelection(instanceIds)
+  local selectedSet = {}
+  for _, instanceId in ipairs(instanceIds or {}) do
+    selectedSet[instanceId] = true
+  end
+
+  if not UI.exportRaidChecks then
+    return
+  end
+
+  for instanceId, check in pairs(UI.exportRaidChecks) do
+    local checked = selectedSet[instanceId] and true or false
+    check:SetChecked(checked)
+    sessionSelectedInstances[instanceId] = checked
+  end
+end
+
+UI.applyExportInstanceSelection = applyInstanceSelection
+
+local function updateImportStatus()
+  if not UI.exportImportStatus then
+    return
+  end
+
+  if UI.exportImportedSR then
+    local SR = TuskUpLoot.SR
+    local summary = SR and SR.summarize(UI.exportImportedSR) or {}
+    UI.exportImportStatus:SetText(string.format(
+      "External SR loaded (%d players)",
+      summary.playerCount or 0
+    ))
+    UI.exportImportStatus:Show()
+  else
+    UI.exportImportStatus:Hide()
+  end
+
+  if UI.exportGenerateBtn then
+    local topAnchor = UI.exportRaidScroll
+    if UI.exportImportStatus:IsShown() then
+      topAnchor = UI.exportImportStatus
+    end
+    UI.exportGenerateBtn:ClearAllPoints()
+    UI.exportGenerateBtn:SetPoint("TOPLEFT", topAnchor, "BOTTOMLEFT", 0, -8)
+  end
+end
+
+UI.updateExportImportStatus = updateImportStatus
+
 function UI.ensureExportFrame()
   if UI.exportFrame then
     return
@@ -82,9 +133,19 @@ function UI.ensureExportFrame()
 
   exp:SetScript("OnShow", function()
     Util.bringUISpecialFrameToFront("TuskUpLootExportFrame")
+    updateImportStatus()
   end)
 
   exp:SetScript("OnHide", function()
+    if UI.exportTransitionToSRImport then
+      return
+    end
+    if UI.exportSRImportFrame and UI.exportSRImportFrame:IsShown() then
+      return
+    end
+
+    UI.exportImportedSR = nil
+
     if UI.exportEditBox then
       UI.exportEditBox:ClearFocus()
       UI.exportEditBox:HighlightText(0, 0)
@@ -112,7 +173,7 @@ function UI.ensureExportFrame()
 
   local bulkRow = CreateFrame("Frame", nil, exp)
   bulkRow:SetPoint("TOPRIGHT", exp, "TOPRIGHT", -20, -38)
-  bulkRow:SetSize(200, 22)
+  bulkRow:SetSize(280, 22)
 
   local selectAllBtn = CreateFrame("Button", nil, bulkRow, "UIPanelButtonTemplate")
   selectAllBtn:SetSize(80, 22)
@@ -130,10 +191,19 @@ function UI.ensureExportFrame()
     setAllRaidChecks(false)
   end)
 
+  local importSRBtn = CreateFrame("Button", nil, bulkRow, "UIPanelButtonTemplate")
+  importSRBtn:SetSize(80, 22)
+  importSRBtn:SetPoint("RIGHT", clearBtn, "LEFT", -8, 0)
+  importSRBtn:SetText("Import SR")
+  importSRBtn:SetScript("OnClick", function()
+    UI.openExportSRImportFrame()
+  end)
+
   local raidScroll = CreateFrame("ScrollFrame", nil, exp, "UIPanelScrollFrameTemplate")
   raidScroll:SetPoint("TOPLEFT", raidLabel, "BOTTOMLEFT", 0, -6)
   raidScroll:SetPoint("TOPRIGHT", exp, "TOPRIGHT", -32, -66)
   raidScroll:SetHeight(C.EXPORT_RAID_LIST_HEIGHT)
+  UI.exportRaidScroll = raidScroll
 
   local raidContainer = CreateFrame("Frame", nil, raidScroll)
   raidContainer:SetWidth(C.EXPORT_EDIT_WIDTH)
@@ -170,14 +240,66 @@ function UI.ensureExportFrame()
   end
   raidContainer:SetHeight(math.max(1, math.abs(y)))
 
-  local outputLabel = exp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  outputLabel:SetPoint("TOPLEFT", raidScroll, "BOTTOMLEFT", 0, -10)
-  outputLabel:SetText("Copy the string below and paste into Gargul with /gl sr")
+  local importStatus = exp:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  importStatus:SetPoint("TOPLEFT", raidScroll, "BOTTOMLEFT", 0, -4)
+  importStatus:Hide()
+  UI.exportImportStatus = importStatus
+
+  local generateBtn = CreateFrame("Button", nil, exp, "UIPanelButtonTemplate")
+  generateBtn:SetSize(90, 22)
+  generateBtn:SetPoint("TOPLEFT", raidScroll, "BOTTOMLEFT", 0, -8)
+  generateBtn:SetText("Generate")
+  UI.exportGenerateBtn = generateBtn
+  generateBtn:SetScript("OnClick", function()
+    local selected = getSelectedInstanceIds()
+    if #selected == 0 then
+      Util.safeChatPrint("Select at least one raid to export.")
+      return
+    end
+
+    local GL = TuskUpLoot.Export and TuskUpLoot.Export.GL
+    if not GL or not GL.export then
+      Util.safeChatPrint("Export module unavailable.")
+      return
+    end
+
+    local exportString, err, summary = GL.export(selected, UI.exportImportedSR)
+    if not exportString then
+      Util.safeChatPrint("Export failed: " .. tostring(err or "unknown"))
+      return
+    end
+
+    local outEdit = UI.exportEditBox
+    if not outEdit then
+      return
+    end
+    outEdit:SetText(exportString)
+    outEdit:SetFocus()
+    outEdit:HighlightText()
+
+    if summary then
+      Util.safeChatPrint(string.format(
+        "Gargul export ready: %d players, %d items.",
+        summary.playerCount or 0,
+        summary.itemCount or 0
+      ))
+    end
+  end)
+
+  local outputEditHeight = C.EXPORT_EDIT_HEIGHT
+
+  local closeBtn = CreateFrame("Button", nil, exp, "UIPanelButtonTemplate")
+  closeBtn:SetSize(90, 22)
+  closeBtn:SetPoint("BOTTOMLEFT", exp, "BOTTOMLEFT", 20, 18)
+  closeBtn:SetText("Close")
+  closeBtn:SetScript("OnClick", function()
+    hideExportFrameShowMain()
+  end)
 
   local editBg = CreateFrame("Frame", nil, exp)
-  editBg:SetPoint("TOPLEFT", outputLabel, "BOTTOMLEFT", 0, -6)
-  editBg:SetPoint("BOTTOMRIGHT", exp, "BOTTOMRIGHT", -32, 52)
-  editBg:SetWidth(C.EXPORT_EDIT_WIDTH)
+  editBg:SetPoint("BOTTOMLEFT", closeBtn, "TOPLEFT", 0, 10)
+  editBg:SetPoint("RIGHT", exp, "RIGHT", -32, 0)
+  editBg:SetHeight(outputEditHeight + 8)
 
   local editScroll = CreateFrame("ScrollFrame", nil, editBg, "UIPanelScrollFrameTemplate")
   editScroll:SetPoint("TOPLEFT", editBg, "TOPLEFT", 4, -4)
@@ -185,11 +307,11 @@ function UI.ensureExportFrame()
 
   local editChild = CreateFrame("Frame", nil, editScroll)
   editChild:SetWidth(C.EXPORT_EDIT_WIDTH - 16)
-  editChild:SetHeight(math.max(C.EXPORT_EDIT_HEIGHT, 120))
+  editChild:SetHeight(outputEditHeight)
 
   local editBoxBg = CreateFrame("Frame", nil, editChild, "BackdropTemplate")
   editBoxBg:SetPoint("TOPLEFT", editChild, "TOPLEFT", 6, -6)
-  editBoxBg:SetSize(C.EXPORT_EDIT_WIDTH - 32, math.max(C.EXPORT_EDIT_HEIGHT - 8, 112))
+  editBoxBg:SetSize(C.EXPORT_EDIT_WIDTH - 32, outputEditHeight - 8)
   editBoxBg:SetBackdrop({
     bgFile = "Interface/Tooltips/UI-Tooltip-Background",
     edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -206,7 +328,7 @@ function UI.ensureExportFrame()
   editBox:SetAutoFocus(false)
   editBox:SetFontObject(ChatFontSmall)
   editBox:SetWidth(C.EXPORT_EDIT_WIDTH - 32)
-  editBox:SetHeight(math.max(C.EXPORT_EDIT_HEIGHT - 8, 112))
+  editBox:SetHeight(outputEditHeight - 8)
   editBox:SetPoint("TOPLEFT", editChild, "TOPLEFT", 6, -6)
   editBox:SetScript("OnEscapePressed", function(selfEd)
     selfEd:ClearFocus()
@@ -231,52 +353,17 @@ function UI.ensureExportFrame()
 
   UI.exportEditBox = editBox
 
-  local generateBtn = CreateFrame("Button", nil, exp, "UIPanelButtonTemplate")
-  generateBtn:SetSize(90, 22)
-  generateBtn:SetPoint("BOTTOMLEFT", exp, "BOTTOMLEFT", 20, 18)
-  generateBtn:SetText("Generate")
-  generateBtn:SetScript("OnClick", function()
-    local selected = getSelectedInstanceIds()
-    if #selected == 0 then
-      Util.safeChatPrint("Select at least one raid to export.")
-      return
-    end
+  local outputLabel = exp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  outputLabel:SetPoint("BOTTOMLEFT", editBg, "TOPLEFT", 0, 6)
+  outputLabel:SetText("Copy the string below and paste into Gargul with /gl sr")
+  UI.exportOutputLabel = outputLabel
 
-    local GL = TuskUpLoot.Export and TuskUpLoot.Export.GL
-    if not GL or not GL.export then
-      Util.safeChatPrint("Export module unavailable.")
-      return
-    end
-
-    local exportString, err, summary = GL.export(selected)
-    if not exportString then
-      Util.safeChatPrint("Export failed: " .. tostring(err or "unknown"))
-      return
-    end
-
-    editBox:SetText(exportString)
-    editBox:SetFocus()
-    editBox:HighlightText()
-
-    if summary then
-      Util.safeChatPrint(string.format(
-        "Gargul export ready: %d players, %d items.",
-        summary.playerCount or 0,
-        summary.itemCount or 0
-      ))
-    end
-  end)
-
-  local closeBtn = CreateFrame("Button", nil, exp, "UIPanelButtonTemplate")
-  closeBtn:SetSize(90, 22)
-  closeBtn:SetPoint("BOTTOMLEFT", exp, "BOTTOMLEFT", 120, 18)
-  closeBtn:SetText("Close")
-  closeBtn:SetScript("OnClick", function()
-    hideExportFrameShowMain()
-  end)
+  generateBtn:ClearAllPoints()
+  generateBtn:SetPoint("TOPLEFT", raidScroll, "BOTTOMLEFT", 0, -8)
 
   Util.setCloseButtonPlacement(exp)
   Util.ensureUISpecialFrame("TuskUpLootExportFrame")
 
   UI.exportFrame = exp
+  updateImportStatus()
 end

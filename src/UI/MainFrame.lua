@@ -392,9 +392,13 @@ function UI.ensureFrame()
   toggleExportBtn:SetScript("OnClick", function()
     UI.ensureExportFrame()
     if UI.exportFrame then
+      UI.exportImportedSR = nil
       UI.frame:Hide()
       if UI.exportEditBox then
         UI.exportEditBox:SetText("")
+      end
+      if UI.updateExportImportStatus then
+        UI.updateExportImportStatus()
       end
       UI.exportFrame:Show()
     end
