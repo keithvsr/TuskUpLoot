@@ -1,5 +1,11 @@
 # TuskUpLoot
 
+## 1.5.0
+- Import an SR sheet for non-guildies as part of Gargul SR string generation
+- Fixes to character naming and management
+- Disable automatic broadcast of item acquision
+- Assorted edge- and bug- fixes
+
 ## 1.4.2
 - Characters: remove characters and all their associated gearsets
 - Characters: clean up character gearset list views
