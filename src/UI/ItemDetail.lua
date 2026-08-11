@@ -105,9 +105,9 @@ local function renderNeedsList(needsRows, selectedItemId)
       local markItemId = row.markItemId or selectedItemId
       fr.markBtn:SetScript("OnClick", function()
         TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
-        if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
-          TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
-        end
+        -- if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
+        --   TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
+        -- end
         UI.renderSelectedItem()
       end)
     end
@@ -237,9 +237,9 @@ local function renderTierTokenNeedsList(rewardGroups)
         local markItemId = row.markItemId or group.itemId
         fr.markBtn:SetScript("OnClick", function()
           TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
-          if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
-            TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
-          end
+          -- if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
+          --   TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
+          -- end
           UI.renderSelectedItem()
         end)
       end

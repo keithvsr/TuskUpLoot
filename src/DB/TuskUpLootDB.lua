@@ -13,7 +13,7 @@ local function getDefaults()
     raidRuns = {},
     manualSort = {},
     opts = {
-      sendRaidChat = true,
+      sendRaidChat = false,
       debug = false,
     },
   }
