@@ -67,3 +67,7 @@ Use tags like `v1.0.0`, `v1.0.1` — the packaged `## Version:` field matches th
 2. Game/flavor: WoW Classic / TBC Anniversary; `## Interface: 20505`.
 3. Connect GitHub or upload the latest release `TuskUpLoot.zip`.
 4. Description: mention `/tul` and BIS import.
+
+## Media attribution
+
+Please see the LICENSE file within the `Media` directory for `hyrax.png` attributions
