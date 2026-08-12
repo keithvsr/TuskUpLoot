@@ -1,5 +1,8 @@
 # TuskUpLoot
 
+## 1.5.1
+- Now with _INFINITELY_ more Hyrax
+
 ## 1.5.0
 - Import an SR sheet for non-guildies as part of Gargul SR string generation
 - Fixes to character naming and management
