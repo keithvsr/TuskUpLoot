@@ -22,7 +22,8 @@ local OPTION_ROWS = {
 }
 
 StaticPopupDialogs["TUSKUPLOOT_RESET_DB"] = {
-  text = "|cffff2020Warning:|r This permanently deletes ALL saved characters, gear sets, item needs, raid run data, and settings.\n\nThis cannot be undone.",
+  text =
+  "|cffff2020Warning:|r This permanently deletes ALL saved characters, gear sets, item needs, raid run data, and settings.\n\nThis cannot be undone.",
   button1 = "Reset everything",
   button2 = CANCEL,
   OnAccept = function()
@@ -136,6 +137,31 @@ local function ensureDangerSection(container)
   return section
 end
 
+local function ensureHyraxImage(container)
+  if container.hyraxFrame then
+    return container.hyraxFrame
+  end
+
+  local hyr = CreateFrame("Frame", "HyraxFrame", container)
+  hyr:SetSize(64, 64)
+  hyr:SetPoint("TOPRIGHT", container, "TOPRIGHT", -8, 8)
+
+  local tex = hyr:CreateTexture("HyraxImageTex", "BACKGROUND")
+  tex:SetAllPoints(hyr)
+  tex:SetTexture("Interface/Addons/TuskUpLoot/Media/hyrax.png")
+
+  local border = hyr:CreateTexture("HyraxBorder", "OVERLAY")
+  border:SetTexture("Interface/Common/WhiteIconFrame")
+  border:SetAllPoints(hyr)
+  local color = ITEM_QUALITY_COLORS[TuskUpLoot.Quality.Heirloom]
+  if color then
+    border:SetVertexColor(color.r, color.g, color.b)
+  end
+
+  container.hyraxFrame = hyr
+  return hyr
+end
+
 function UI.renderOptionsPanel()
   local container = UI.optionsContainer
   if not container then
@@ -151,6 +177,10 @@ function UI.renderOptionsPanel()
 
   local danger = ensureDangerSection(container)
   danger:Show()
+
+  local hyrax = ensureHyraxImage(container)
+  hyrax:Show()
+
   container:SetHeight(math.max(1, container.totalHeight or 192))
   container:Show()
 end
