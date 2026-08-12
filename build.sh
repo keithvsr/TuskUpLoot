@@ -31,6 +31,11 @@ while IFS= read -r f; do
   cp -f "${f}" "${OUT_DIR}/${rel}"
 done < <(find "${SRC_DIR}" -type f \( -name '*.lua' -o -name '*.xml' \) | sort)
 
+if [[ -d "${SRC_DIR}/Media" ]]; then
+  mkdir -p "${OUT_DIR}/Media"
+  cp -R "${SRC_DIR}/Media/." "${OUT_DIR}/Media/"
+fi
+
 shopt -s nullglob
 extra_files=(
   "${ROOT_DIR}"/README*
