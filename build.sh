@@ -22,8 +22,21 @@ for f in "${required_files[@]}"; do
   fi
 done
 
-TUSKUPLOOT_VERSION="${TUSKUPLOOT_VERSION:-dev}"
-sed "s/@project-version@/${TUSKUPLOOT_VERSION}/g" "${SRC_DIR}/TuskUpLoot.toc" > "${OUT_DIR}/TuskUpLoot.toc"
+latest_tag="$(git -C "${ROOT_DIR}" describe --tags --abbrev=0 2>/dev/null || true)"
+if [[ -n "${latest_tag}" ]]; then
+  default_version="${latest_tag}-dev"
+else
+  default_version="dev"
+fi
+TUSKUPLOOT_VERSION="${TUSKUPLOOT_VERSION:-${default_version}}"
+
+awk -v ver="${TUSKUPLOOT_VERSION}" '
+  {
+    gsub(/@project-version@/, ver)
+    print
+    if ($0 ~ /^## Version:/) print "## AllowAddOnTableAccess: 1"
+  }
+' "${SRC_DIR}/TuskUpLoot.toc" > "${OUT_DIR}/TuskUpLoot.toc"
 
 while IFS= read -r f; do
   rel="${f#${SRC_DIR}/}"

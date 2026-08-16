@@ -1,10 +1,16 @@
-local ADDON_NAME = ...
+---@type TUL
+local TUL;
+
+---@type string
+local ADDON_NAME;
+
+ADDON_NAME, TUL = ...
 
 local addon = TuskUpLoot
 
-addon.addonName = ADDON_NAME
+TUL.addonName = ADDON_NAME
+TUL
 addon.State = addon.State or {}
-
 addon.version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
 
 function addon.chatPrint(msg)

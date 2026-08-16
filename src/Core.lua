@@ -1,8 +1,16 @@
-TuskUpLoot = TuskUpLoot or {}
+---@class TUL
+---@field addonName string
+---@field version string
+---@field State table
+local TUL;
+
+_, TUL = ...
+
+-- TuskUpLoot = TuskUpLoot or {}
 
 -- Redefine item quality enum for naming clarity
----@enum TuskUpLoot.Quality
-TuskUpLoot.Quality = {
+---@enum quality
+TUL.QUALITY = {
     Poor = Enum.ItemQuality.Poor or 0,
     Common = Enum.ItemQuality.Common or 1,
     Uncommon = Enum.ItemQuality.Uncommon or 2,
@@ -12,4 +20,13 @@ TuskUpLoot.Quality = {
     Artifact = Enum.ItemQuality.Artifact or 6,
     Heirloom = Enum.ItemQuality.Heirloom or 7,
     WoWToken = Enum.ItemQuality.WoWToken or 8,
+}
+
+---@enum phases
+TUL.PHASES = {
+    One = 1,
+    Two = 2,
+    Three = 3,
+    Four = 4,
+    Five = 5,
 }
