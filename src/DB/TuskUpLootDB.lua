@@ -150,6 +150,29 @@ function DB.moveCharacterInManualSort(characterKey, toIndex)
   table.insert(manualSort, toIndex, key)
 end
 
+local function dedupeGearSetKeyList(list)
+  local seen = {}
+  local out = {}
+  for _, key in ipairs(list or {}) do
+    if type(key) == "string" and not seen[key] then
+      seen[key] = true
+      out[#out + 1] = key
+    end
+  end
+  return out
+end
+
+local function mergeGearSetKeys(existing, incoming)
+  local merged = {}
+  for _, key in ipairs(existing or {}) do
+    merged[#merged + 1] = key
+  end
+  for _, key in ipairs(incoming or {}) do
+    merged[#merged + 1] = key
+  end
+  return dedupeGearSetKeyList(merged)
+end
+
 local function upsertItem(itemId, item)
   ensureSavedVar()
   assert(itemId, "item ID is required to insert/update item")
@@ -184,9 +207,7 @@ local function upsertItem(itemId, item)
         if not itemCharTable.gearSets then
           itemCharTable.gearSets = {}
         end
-        for _, gearSetKey in ipairs(charData.gearSets or {}) do
-          itemCharTable.gearSets[#itemCharTable.gearSets + 1] = gearSetKey
-        end
+        itemCharTable.gearSets = mergeGearSetKeys(itemCharTable.gearSets, charData.gearSets)
       end
     end
   end
