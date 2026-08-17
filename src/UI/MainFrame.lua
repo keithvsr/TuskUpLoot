@@ -466,6 +466,12 @@ function UI.ensureFrame()
     if ctx.focusEncounterId then
       UI.focusEncounterId = ctx.focusEncounterId
     end
+    if ctx.focusInstanceId then
+      UI.focusInstanceId = ctx.focusInstanceId
+      if UI.expandOnlyInstance then
+        UI.expandOnlyInstance(ctx.focusInstanceId)
+      end
+    end
     UI.setActiveTab("raids")
     if UI.renderEncounterLootPanel then
       UI.renderEncounterLootPanel()
