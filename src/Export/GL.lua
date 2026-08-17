@@ -72,6 +72,11 @@ local function buildItemInstanceMap()
           addInstanceForItem(map, itemId, instanceId)
         end
       end
+      if Data.getInstanceTrashLootIds then
+        for _, itemId in ipairs(Data.getInstanceTrashLootIds(instanceId)) do
+          addInstanceForItem(map, itemId, instanceId)
+        end
+      end
     end
   end
 

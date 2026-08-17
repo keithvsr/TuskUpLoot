@@ -17,6 +17,14 @@ function UI.clearNeedsList()
     end
   end
 
+  if UI.tierRewardHeaderFrames then
+    for _, fr in ipairs(UI.tierRewardHeaderFrames) do
+      if fr then
+        fr:Hide()
+      end
+    end
+  end
+
   if UI.tierRewardRowFrames then
     for _, fr in ipairs(UI.tierRewardRowFrames) do
       if fr then
@@ -136,8 +144,13 @@ local function renderTierTokenNeedsList(rewardGroups)
     return
   end
 
-  local frames = UI.tierRewardRowFrames or {}
-  UI.tierRewardRowFrames = frames
+  -- Headers and need-rows share one visual list but must use separate pools:
+  -- after mark-looted re-renders, row counts shift and a need-row frame would
+  -- otherwise be reused as a header (nil headerFS) or vice versa.
+  local headerFrames = UI.tierRewardHeaderFrames or {}
+  UI.tierRewardHeaderFrames = headerFrames
+  local rowFrames = UI.tierRewardRowFrames or {}
+  UI.tierRewardRowFrames = rowFrames
 
   local MARK_BTN_W = 78
   local MARK_BTN_H = 18
@@ -148,18 +161,19 @@ local function renderTierTokenNeedsList(rewardGroups)
 
   clearNeedsList()
 
-  local frameIdx = 0
+  local headerIdx = 0
+  local rowIdx = 0
   local y = 0
 
   for _, group in ipairs(rewardGroups or {}) do
-    frameIdx = frameIdx + 1
-    local headerFr = frames[frameIdx]
+    headerIdx = headerIdx + 1
+    local headerFr = headerFrames[headerIdx]
     if not headerFr then
       headerFr = CreateFrame("Frame", nil, container)
       headerFr.headerFS = headerFr:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
       headerFr.headerFS:SetJustifyH("LEFT")
       headerFr.headerFS:SetPoint("TOPLEFT", headerFr, "TOPLEFT", 0, 0)
-      frames[frameIdx] = headerFr
+      headerFrames[headerIdx] = headerFr
     end
 
     headerFr:ClearAllPoints()
@@ -182,8 +196,8 @@ local function renderTierTokenNeedsList(rewardGroups)
     y = y + headerH + GAP_Y
 
     for _, row in ipairs(group.needs or {}) do
-      frameIdx = frameIdx + 1
-      local fr = frames[frameIdx]
+      rowIdx = rowIdx + 1
+      local fr = rowFrames[rowIdx]
       if not fr then
         fr = CreateFrame("Frame", nil, container)
         fr:SetWidth(container:GetWidth())
@@ -211,7 +225,7 @@ local function renderTierTokenNeedsList(rewardGroups)
         end
         fr.markBtn = markBtn
 
-        frames[frameIdx] = fr
+        rowFrames[rowIdx] = fr
       end
 
       fr:ClearAllPoints()
@@ -255,9 +269,14 @@ local function renderTierTokenNeedsList(rewardGroups)
     y = y + GAP_Y
   end
 
-  for j = frameIdx + 1, #frames do
-    if frames[j] then
-      frames[j]:Hide()
+  for j = headerIdx + 1, #headerFrames do
+    if headerFrames[j] then
+      headerFrames[j]:Hide()
+    end
+  end
+  for j = rowIdx + 1, #rowFrames do
+    if rowFrames[j] then
+      rowFrames[j]:Hide()
     end
   end
 
