@@ -1,7 +1,9 @@
 -- Drop item ID -> wishlist reward item IDs for need rollup.
 -- Covers tier tokens and quest-starting boss drops (players list rewards, not the drop).
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 Data.DropRewardResults = {
   -- Tier 4

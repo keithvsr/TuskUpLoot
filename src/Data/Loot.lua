@@ -1,5 +1,7 @@
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 local function appendDropsFromSource(lootIds, seen, sourceType, sourceId)
   if not sourceType or not sourceId then
@@ -80,7 +82,7 @@ function Data.getInstanceTrashLootIds(instanceId)
 end
 
 function Data.getItemDisplayName(itemId)
-  local ItemCache = TuskUpLoot.ItemCache
+  local ItemCache = TUL.ItemCache
   if ItemCache and ItemCache.get then
     local cached = ItemCache.get(itemId)
     if cached and cached.name then
@@ -151,7 +153,7 @@ local function mergeGearSetRow(dest, gs)
 end
 
 function Data.getAggregatedItemRollup(itemId)
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if not DB or not DB.getItemRollup or not Data.getNeedRollupItemIds then
     return nil
   end
@@ -206,7 +208,7 @@ function Data.getAggregatedItemRollup(itemId)
 end
 
 function Data.getTierTokenNeedsByReward(tokenId)
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if not DB or not DB.getItemRollup or not Data.getTierTokenResultIds then
     return nil
   end
@@ -318,8 +320,8 @@ local function requestItemDataRecursive(itemId, seen)
     return
   end
   seen[itemId] = true
-  if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.queue then
-    TuskUpLoot.ItemCache.queue(itemId)
+  if TUL.ItemCache and TUL.ItemCache.queue then
+    TUL.ItemCache.queue(itemId)
   end
 
   if Data.getNeedRollupItemIds then

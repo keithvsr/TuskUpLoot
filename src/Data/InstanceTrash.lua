@@ -1,6 +1,8 @@
 -- Per-raid trash loot catalog (item IDs that drop from trash, not bosses).
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 Data.InstanceTrashLoot = {
   -- Karazhan
