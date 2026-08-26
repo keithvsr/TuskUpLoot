@@ -1,6 +1,8 @@
 -- Handles parsing sixtyupgrades JSON exports into Lua tables.
 
-TuskUpLoot.Parser = TuskUpLoot.Parser or {}
+local _, TUL = ...
+
+TUL.Parser = TUL.Parser or {}
 
 -- Core Parsing Functions
 
@@ -150,7 +152,7 @@ end
 -- Parse a raw JSON string into a Lua table
 -- Returns (table, nil) on success, (nil, errorMessage) on failure
 
-function TuskUpLoot.Parser.Parse(jsonString)
+function TUL.Parser.Parse(jsonString)
     if type(jsonString) ~= "string" then
         return nil, "Input must be a string"
     end

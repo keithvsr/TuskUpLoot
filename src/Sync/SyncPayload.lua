@@ -1,7 +1,9 @@
 -- Build sync bundles from SavedVariables.
 
-TuskUpLoot.SyncPayload = TuskUpLoot.SyncPayload or {}
-local Payload = TuskUpLoot.SyncPayload
+local _, TUL = ...
+
+TUL.SyncPayload = TUL.SyncPayload or {}
+local Payload = TUL.SyncPayload
 
 local function copyItem(item)
   if type(item) ~= "table" then
@@ -121,6 +123,7 @@ function Payload.buildGearSetBundle(characterKey, gearSetKey)
   }
 
   local fullChar = copyCharacter(character)
+  if not fullChar then return nil end
   local charCopy = {
     name = fullChar.name,
     level = fullChar.level,

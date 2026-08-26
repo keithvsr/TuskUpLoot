@@ -1,8 +1,10 @@
 -- Handles SavedVariables persistence for this addon.
 -- Loaded via .toc; defines a module table `TuskUpLoot.DB`.
 
-TuskUpLoot.DB = TuskUpLoot.DB or {}
-local DB = TuskUpLoot.DB
+local _, TUL = ...
+
+TUL.DB = TUL.DB or {}
+local DB = TUL.DB
 
 local RAID_RUN_MAX_AGE_SEC = 14 * 24 * 60 * 60
 
@@ -178,10 +180,10 @@ local function upsertItem(itemId, item)
   assert(itemId, "item ID is required to insert/update item")
   if TuskUpLootDB.items[itemId] == nil then
     TuskUpLootDB.items[itemId] = item
-    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.queue then
-      TuskUpLoot.ItemCache.queue(itemId, function()
-        if TuskUpLoot.UI and TuskUpLoot.UI.rebuildItemList then
-          TuskUpLoot.UI.rebuildItemList()
+    if TUL.ItemCache and TUL.ItemCache.queue then
+      TUL.ItemCache.queue(itemId, function()
+        if TUL.UI and TUL.UI.rebuildItemList then
+          TUL.UI.rebuildItemList()
         end
       end)
     end

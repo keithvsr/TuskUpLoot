@@ -1,2 +1,3 @@
 -- UI bootstrap: loads before other UI/*.lua modules (see .toc load order).
-TuskUpLoot.UI = TuskUpLoot.UI or {}
+local _, TUL = ...
+TUL.UI = TUL.UI or {}

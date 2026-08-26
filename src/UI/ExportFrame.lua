@@ -1,9 +1,11 @@
 -- Export Gargul soft reserve dialog.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
-local Data = TuskUpLoot.Data
+local Data = TUL.Data
 
 local sessionSelectedInstances = {}
 
@@ -81,7 +83,7 @@ local function updateImportStatus()
   end
 
   if UI.exportImportedSR then
-    local SR = TuskUpLoot.SR
+    local SR = TUL.SR
     local summary = SR and SR.summarize(UI.exportImportedSR) or {}
     UI.exportImportStatus:SetText(string.format(
       "External SR loaded (%d players)",
@@ -257,7 +259,7 @@ function UI.ensureExportFrame()
       return
     end
 
-    local GL = TuskUpLoot.Export and TuskUpLoot.Export.GL
+    local GL = TUL.Export and TUL.Export.GL
     if not GL or not GL.export then
       Util.safeChatPrint("Export module unavailable.")
       return

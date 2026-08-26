@@ -1,5 +1,13 @@
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+--[[
+Data/Items.lua
+
+Contains data for TBC Item drops and rewards
+]]
+
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 Data.Items = Data.Items or {}
 

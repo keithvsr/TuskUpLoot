@@ -1,6 +1,8 @@
 -- Items tab: filtered imported-item list (detail panel lives in ItemDetail.lua).
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 
 local function itemMatchesFilter(itemId, item, needle)
@@ -19,7 +21,7 @@ function UI.rebuildItemList()
     return
   end
 
-  if not TuskUpLoot.DB then
+  if not TUL.DB then
     return
   end
 

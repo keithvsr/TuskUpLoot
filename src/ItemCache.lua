@@ -1,7 +1,9 @@
 -- Session-scoped item data cache (name, link, quality, icon, equipLoc).
 
-TuskUpLoot.ItemCache = TuskUpLoot.ItemCache or {}
-local ItemCache = TuskUpLoot.ItemCache
+local _, TUL = ...
+
+TUL.ItemCache = TUL.ItemCache or {}
+local ItemCache = TUL.ItemCache
 
 ItemCache.entries = ItemCache.entries or {}
 ItemCache.pending = ItemCache.pending or {}

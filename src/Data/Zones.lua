@@ -1,5 +1,7 @@
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 Data.Zones = Data.Zones or {}
 

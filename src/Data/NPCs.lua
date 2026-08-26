@@ -1,5 +1,13 @@
-TuskUpLoot.Data = TuskUpLoot.Data or {}
-local Data = TuskUpLoot.Data
+--[[
+Data/NPCs.lua
+
+Contains data for TBC Boss NPCs
+]]
+
+local _, TUL = ...
+
+TUL.Data = TUL.Data or {}
+local Data = TUL.Data
 
 Data.NPCs = Data.NPCs or {}
 

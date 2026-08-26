@@ -1,8 +1,10 @@
 -- Handles importing sixtyupgrades JSON exports into the TuskUpLoot database.
 -- Loaded via .toc
 
-TuskUpLoot.Importer = TuskUpLoot.Importer or {}
-local IMP = TuskUpLoot.Importer
+local _, TUL = ...
+
+TUL.Importer = TUL.Importer or {}
+local IMP = TUL.Importer
 
 local function normalizeStringKey(name)
   assert(type(name) == "string", "name must be a string")
@@ -98,7 +100,7 @@ end
 
 -- Returns: payload, err, characterKey — on success err is nil and characterKey is set.
 function IMP.import(jsonText)
-  local payload, err = TuskUpLoot.Parser.Parse(jsonText)
+  local payload, err = TUL.Parser.Parse(jsonText)
   if not payload then
     return nil, err
   end
@@ -124,9 +126,9 @@ function IMP.import(jsonText)
     return nil, "invalid items in payload"
   end
 
-  TuskUpLoot.DB.upsertCharacter(characterKey, characterData)
-  local _, _, isAnUpdate = TuskUpLoot.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
-  TuskUpLoot.DB.upsertItems(items, characterKey, gearSetKey)
+  TUL.DB.upsertCharacter(characterKey, characterData)
+  local _, _, isAnUpdate = TUL.DB.upsertGearSet(characterKey, gearSetKey, gearSet)
+  TUL.DB.upsertItems(items, characterKey, gearSetKey)
 
   return payload, nil, characterKey, isAnUpdate ~= nil and isAnUpdate or false
 end

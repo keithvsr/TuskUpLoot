@@ -1,14 +1,16 @@
 -- Serialize/compress/encode sync bundles for AceComm transport.
 
-TuskUpLoot.SyncCodec = TuskUpLoot.SyncCodec or {}
-local Codec = TuskUpLoot.SyncCodec
+local _, TUL = ...
+
+TUL.SyncCodec = TUL.SyncCodec or {}
+local Codec = TUL.SyncCodec
 
 local LibSerialize = LibStub("LibSerialize")
 local LibDeflate = LibStub("LibDeflate")
 
 local function debug(msg)
-  if TuskUpLoot.debugPrint then
-    TuskUpLoot.debugPrint(msg)
+  if TUL.debugPrint then
+    TUL.debugPrint(msg)
   end
 end
 

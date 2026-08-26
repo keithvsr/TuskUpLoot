@@ -1,10 +1,15 @@
-local ADDON_NAME = ...
+---@type TUL
+local TUL;
 
-local addon = TuskUpLoot
+---@type string
+local ADDON_NAME;
 
-addon.addonName = ADDON_NAME
+ADDON_NAME, TUL = ...
+
+local addon = TUL
+
+TUL.addonName = ADDON_NAME
 addon.State = addon.State or {}
-
 addon.version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
 
 function addon.chatPrint(msg)
@@ -343,8 +348,8 @@ local function enterRaidInstance(instanceId)
   eventFrame:RegisterEvent("ENCOUNTER_START")
   eventFrame:RegisterEvent("ENCOUNTER_END")
   eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-  if TuskUpLoot.Data and TuskUpLoot.Data.requestInstanceItemData then
-    TuskUpLoot.Data.requestInstanceItemData(instanceId)
+  if addon.Data and addon.Data.requestInstanceItemData then
+    addon.Data.requestInstanceItemData(instanceId)
   end
   notifyRaidStateChanged()
 end
@@ -378,7 +383,7 @@ local function handleCombatLog()
     end
     local parsed = parseLootSourceFromGuid(destGuid)
     local creatureId = parsed and parsed.sourceType == "npc" and parsed.sourceId
-    local creature = creatureId and TuskUpLoot.Data.NPCs and TuskUpLoot.Data.NPCs[creatureId]
+    local creature = creatureId and addon.Data.NPCs and addon.Data.NPCs[creatureId]
     if creature and addon.State.EncounterId then
       addon.State.LastKilledBoss = creatureId
       notifyRaidStateChanged()
@@ -527,8 +532,8 @@ local function handlePlayerLogin()
   local itemIds = Util and Util.getAllItemIds and Util.getAllItemIds() or {}
   addon.totalItems = itemIds and #itemIds or 0
   if addon.totalItems > 0 then
-    if TuskUpLoot.ItemCache and TuskUpLoot.ItemCache.preloadAll then
-      TuskUpLoot.ItemCache.preloadAll(itemIds, function()
+    if addon.ItemCache and addon.ItemCache.preloadAll then
+      addon.ItemCache.preloadAll(itemIds, function()
         addon.debugPrint("Item cache ready.")
         if addon.UI and addon.UI.rebuildItemList then
           addon.UI.rebuildItemList()
@@ -549,7 +554,7 @@ end
 -- Begin PLAYER_ENTERING_WORLD handler (fires essentially each loading screen)
 local function handlePlayerEnteringWorld()
   local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-  local instance = TuskUpLoot.Data.Instances[instanceId]
+  local instance = addon.Data.Instances[instanceId]
   if instanceType == "raid" and instance then
     enterRaidInstance(instanceId)
   end
@@ -561,7 +566,7 @@ end
 -- Begin ZONE_CHANGED_NEW_AREA handler (fires on zone change)
 local function handleZoneChangedNewArea()
   local _, instanceType, _, _, _, _, _, instanceId = GetInstanceInfo()
-  local instance = TuskUpLoot.Data.Instances[instanceId]
+  local instance = addon.Data.Instances[instanceId]
   if instanceType ~= "raid" or not instance then
     leaveRaidInstance()
     return
@@ -577,7 +582,7 @@ end
 -- Begin ENCOUNTER_START handler (fires on encounter start)
 local function handleEncounterStart(...)
   local encounterId = ...
-  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  local encounter = addon.Data.Encounters[encounterId]
   if not encounter then return end
   if encounter.instance_id ~= addon.State.InstanceId then return end
   addon.State.EncounterId = encounterId
@@ -588,7 +593,7 @@ end
 -- Begin ENCOUNTER_END handler (fires on encounter end)
 local function handleEncounterEnd(...)
   local encounterId, _, _, _, success = ...
-  local encounter = TuskUpLoot.Data.Encounters[encounterId]
+  local encounter = addon.Data.Encounters[encounterId]
   if not encounter then return end
   if encounter.instance_id ~= addon.State.InstanceId then return end
   if success then

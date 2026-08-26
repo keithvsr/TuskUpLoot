@@ -1,6 +1,8 @@
 -- Guild member picker for sync push target.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 

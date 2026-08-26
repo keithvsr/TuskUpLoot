@@ -1,11 +1,13 @@
 -- Handles importing SR data from softres.it in order to merge in
 -- non-guildy data if ever necessary
 
-TuskUpLoot.SR = TuskUpLoot.SR or {}
-local SR = TuskUpLoot.SR
+local _, TUL = ...
+
+TUL.SR = TUL.SR or {}
+local SR = TUL.SR
 
 local LibDeflate = LibStub("LibDeflate")
-local Data = TuskUpLoot.Data
+local Data = TUL.Data
 
 local gargulNameToInstanceId
 

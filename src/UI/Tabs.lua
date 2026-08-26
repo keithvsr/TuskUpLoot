@@ -1,6 +1,8 @@
 -- Tab strip orchestration: visibility, switching, refresh, selection.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 
 function UI.getCharListSortDescending()
@@ -22,8 +24,8 @@ local function styleCharSortButton(btn, sortKey, label)
   local descending = false
   if sortKey ~= "manual" then
     descending = (sortKey == "class")
-      and (UI.charListSortClassDescending or false)
-      or (UI.charListSortNameDescending or false)
+        and (UI.charListSortClassDescending or false)
+        or (UI.charListSortNameDescending or false)
   end
 
   if btn.bg then

@@ -1,4 +1,6 @@
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 
 UI.Constants = {
   RAIL_WIDTH = 200,

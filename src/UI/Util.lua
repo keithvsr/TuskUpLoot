@@ -1,10 +1,12 @@
-local UI = TuskUpLoot.UI
-local Util = {}
-UI.Util = Util
+local _, TUL = ...
+
+local UI = TUL.UI
+UI.Util = UI.Util or {}
+local Util = UI.Util
 
 function Util.safeChatPrint(msg)
-  if TuskUpLoot.chatPrint then
-    TuskUpLoot.chatPrint(msg)
+  if TUL.chatPrint then
+    TUL.chatPrint(msg)
     return
   end
   if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
@@ -13,7 +15,7 @@ function Util.safeChatPrint(msg)
 end
 
 function Util.getRaidState()
-  return TuskUpLoot.State or {}
+  return TUL.State or {}
 end
 
 function Util.isDetailReady()
@@ -65,14 +67,14 @@ function Util.updateFrameTitle()
     return
   end
   local state = Util.getRaidState()
-  if state.InstanceId and TuskUpLoot.Data and TuskUpLoot.Data.Instances then
-    local instance = TuskUpLoot.Data.Instances[state.InstanceId]
+  if state.InstanceId and TUL.Data and TUL.Data.Instances then
+    local instance = TUL.Data.Instances[state.InstanceId]
     if instance then
       UI.frameTitle:SetText("TuskUpLoot — " .. (instance.name or "Raid"))
       return
     end
   end
-  UI.frameTitle:SetText("TuskUpLoot — Guild")
+  UI.frameTitle:SetText("TuskUpLoot")
 end
 
 function UI.dismissAllFrames()
@@ -209,7 +211,7 @@ function Util.bindFrameEscapeDismiss(frame, onDismiss)
 end
 
 function Util.getCachedItem(itemId)
-  local ItemCache = TuskUpLoot.ItemCache
+  local ItemCache = TUL.ItemCache
   if ItemCache and ItemCache.get then
     return ItemCache.get(itemId)
   end
@@ -224,15 +226,15 @@ function Util.getItemDisplayName(itemId, fallbackName)
   if fallbackName and fallbackName ~= "" then
     return fallbackName
   end
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if DB and DB.getItem then
     local item = DB.getItem(itemId)
     if item and item.name then
       return item.name
     end
   end
-  if TuskUpLoot.Data and TuskUpLoot.Data.getItemDisplayName then
-    return TuskUpLoot.Data.getItemDisplayName(itemId)
+  if TUL.Data and TUL.Data.getItemDisplayName then
+    return TUL.Data.getItemDisplayName(itemId)
   end
   return nil
 end
@@ -404,7 +406,7 @@ function Util.isCosmeticItem(itemId)
     return false
   end
 
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if DB and DB.getItem then
     local item = DB.getItem(itemId)
     if item and item.slot then
@@ -539,7 +541,7 @@ function Util.resolveSlotKey(itemId)
     return "unknown"
   end
 
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if DB and DB.getItem then
     local item = DB.getItem(itemId)
     if item and item.slot then
@@ -726,7 +728,7 @@ function Util.sortCharacterRows(rows, sortBy, descending, manualSortKeys)
       return characterRowName(a) < characterRowName(b)
     end
     if sortBy == "recent" then
-      local DB = TuskUpLoot.DB
+      local DB = TUL.DB
       local aAt = DB and DB.characterLatestActivityAt and DB.characterLatestActivityAt(a.key) or 0
       local bAt = DB and DB.characterLatestActivityAt and DB.characterLatestActivityAt(b.key) or 0
       if aAt ~= bAt then
@@ -921,14 +923,14 @@ end
 function Util.getAllItemIds()
   local itemIds = {}
   local seen = {}
-  local listItems = TuskUpLoot.DB.sortedItemIDs()
+  local listItems = TUL.DB.sortedItemIDs()
   for _, itemId in ipairs(listItems) do
     if not seen[itemId] then
       seen[itemId] = true
       itemIds[#itemIds + 1] = itemId
     end
   end
-  local dropItems = TuskUpLoot.Data.getDropItemIds()
+  local dropItems = TUL.Data.getDropItemIds()
   for _, itemId in ipairs(dropItems) do
     if not seen[itemId] then
       seen[itemId] = true
@@ -943,11 +945,11 @@ end
 
 function Util.getAllItems()
   local items = {}
-  local dbItems = TuskUpLoot.DB.getItems()
+  local dbItems = TUL.DB.getItems()
   for itemId, item in pairs(dbItems) do
     items[itemId] = item
   end
-  local dropItems = TuskUpLoot.Data.Items or {}
+  local dropItems = TUL.Data.Items or {}
   for itemId, item in pairs(dropItems) do
     if not items[itemId] then
       items[itemId] = item

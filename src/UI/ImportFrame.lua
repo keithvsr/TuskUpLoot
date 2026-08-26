@@ -1,6 +1,8 @@
 -- Import JSON dialog (sixtyupgrades export).
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -133,8 +135,8 @@ function UI.ensureImportFrame()
     end
 
     local payload, err, isAnUpdate
-    if TuskUpLoot.Importer then
-      payload, err, _, isAnUpdate = TuskUpLoot.Importer.import(txt)
+    if TUL.Importer then
+      payload, err, _, isAnUpdate = TUL.Importer.import(txt)
     end
     if not payload then
       Util.safeChatPrint("Import failed: " .. tostring(err or "unknown"))
