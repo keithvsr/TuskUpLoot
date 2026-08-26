@@ -1,5 +1,12 @@
 # TuskUpLoot
 
+## 1.5.2
+- Adds instance trash loot bucket (previous only captured non-boss drops within raid)
+- Some fixes to quest items rewards (Verdant Sphere, etc) in lists
+- UI updates
+- Fixed a bug where updating characters would cause items to list the player multiple times
+- Add IconTexture for display in client AddOn lists
+
 ## 1.5.1
 - Now with _INFINITELY_ more Hyrax
 
