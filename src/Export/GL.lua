@@ -1,13 +1,15 @@
 -- Handles exporting needed item data to Gargul addon using reverse-engineered
 -- formatting from softres.it style export strings
 
-TuskUpLoot.Export = TuskUpLoot.Export or {}
+local _, TUL = ...
+
+TUL.Export = TUL.Export or {}
 local GL = {}
-TuskUpLoot.Export.GL = GL
+TUL.Export.GL = GL
 
 local LibDeflate = LibStub("LibDeflate")
-local Data = TuskUpLoot.Data
-local DB = TuskUpLoot.DB
+local Data = TUL.Data
+local DB = TUL.DB
 
 local itemInstanceMap
 local armorToTokenMap
