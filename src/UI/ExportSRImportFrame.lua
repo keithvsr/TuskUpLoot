@@ -1,6 +1,8 @@
 -- Import softres.it export string for Gargul export merge.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -14,7 +16,7 @@ local function hideSRImportShowExport()
 end
 
 local function applyImportedSR(text)
-  local SR = TuskUpLoot.SR
+  local SR = TUL.SR
   if not SR or not SR.import then
     Util.safeChatPrint("SR import module unavailable.")
     return false

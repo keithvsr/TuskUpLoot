@@ -1,6 +1,8 @@
 -- Main window frame creation and toggle.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -183,8 +185,8 @@ function UI.ensureFrame()
   pushDataBtn:SetText("Push data")
   pushDataBtn:Hide()
   pushDataBtn:SetScript("OnClick", function()
-    if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushPicker then
-      TuskUpLoot.Sync.openPushPicker()
+    if TUL.Sync and TUL.Sync.openPushPicker then
+      TUL.Sync.openPushPicker()
     end
   end)
   UI.pushDataBtn = pushDataBtn
@@ -443,7 +445,7 @@ function UI.ensureFrame()
   networkedRow:SetHeight(28)
   networkedRow:SetPoint("TOPLEFT", optionsContainer, "TOPLEFT", 0, 0)
   networkedRow:SetPoint("RIGHT", optionsContainer, "RIGHT", 0, 0)
-  local isNetworked = TuskUpLoot.Net.isPrefixRegistered()
+  local isNetworked = TUL.Net.isPrefixRegistered()
   local networkedLabel = (isNetworked and "|cFF00FF00Yes|r" or "|cFFFF0000No|r")
   local networkedLabelFrame = networkedRow:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   networkedLabelFrame:SetPoint("LEFT", networkedRow, "LEFT", 4, 1)
@@ -486,7 +488,7 @@ function UI.ensureFrame()
   end)
 
   UI.frame = f
-  TuskUpLoot.frame = f
+  TUL.frame = f
 
   local state = Util.getRaidState()
   if state.InstanceId then

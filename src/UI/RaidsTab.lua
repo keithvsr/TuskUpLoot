@@ -1,6 +1,8 @@
 -- Raids tab: instance/encounter tree + encounter loot in right panel.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -65,7 +67,7 @@ local function updateEncounterLootToggle()
 end
 
 local function selectTrash(instanceId)
-  local Data = TuskUpLoot.Data
+  local Data = TUL.Data
   local trashBucket = Data and Data.TRASH_DROP_BUCKET
   if not trashBucket then
     return
@@ -85,9 +87,9 @@ end
 local function selectEncounter(encounterId)
   UI.focusEncounterId = encounterId
   UI.encounterLootView = "actual"
-  local trashBucket = TuskUpLoot.Data and TuskUpLoot.Data.TRASH_DROP_BUCKET
-  if encounterId ~= trashBucket and TuskUpLoot.Data and TuskUpLoot.Data.requestEncounterItemData then
-    TuskUpLoot.Data.requestEncounterItemData(encounterId)
+  local trashBucket = TUL.Data and TUL.Data.TRASH_DROP_BUCKET
+  if encounterId ~= trashBucket and TUL.Data and TUL.Data.requestEncounterItemData then
+    TUL.Data.requestEncounterItemData(encounterId)
   end
   UI.rebuildRaidList()
   if UI.activeTab == "raids" then
@@ -133,7 +135,7 @@ function UI.renderEncounterLootPanel()
   end
 
   local focusEnc = UI.focusEncounterId
-  local Data = TuskUpLoot.Data
+  local Data = TUL.Data
   local trashBucket = Data and Data.TRASH_DROP_BUCKET
 
   if not focusEnc then
@@ -262,7 +264,7 @@ function UI.rebuildRaidList()
     return
   end
 
-  local Data = TuskUpLoot.Data
+  local Data = TUL.Data
   if not Data then
     return
   end

@@ -1,9 +1,11 @@
 -- Push sync data: select characters to offer.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
-local DB = TuskUpLoot.DB
+local DB = TUL.DB
 
 local sessionSelectedCharacters = {}
 
@@ -197,7 +199,7 @@ function UI.ensureSyncPushFrame()
   pushBtn:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 18)
   pushBtn:SetText("Push")
   pushBtn:SetScript("OnClick", function()
-    local Sync = TuskUpLoot.Sync
+    local Sync = TUL.Sync
     if not Sync then
       Util.safeChatPrint("Sync module unavailable.")
       return

@@ -1,8 +1,10 @@
 -- Options tab: yes/no addon settings.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
-local Opts = TuskUpLoot.Opts
+local Opts = TUL.Opts
 
 local OPTION_ROWS = {
   {
@@ -27,7 +29,7 @@ StaticPopupDialogs["TUSKUPLOOT_RESET_DB"] = {
   button1 = "Reset everything",
   button2 = CANCEL,
   OnAccept = function()
-    local DB = TuskUpLoot.DB
+    local DB = TUL.DB
     if DB and DB.resetToDefaults and DB.resetToDefaults() then
       if Opts and Opts.init then
         Opts.init()
@@ -153,7 +155,7 @@ local function ensureHyraxImage(container)
   local border = hyr:CreateTexture("HyraxBorder", "OVERLAY")
   border:SetTexture("Interface/Common/WhiteIconFrame")
   border:SetAllPoints(hyr)
-  local color = ITEM_QUALITY_COLORS[TuskUpLoot.Quality.Heirloom]
+  local color = ITEM_QUALITY_COLORS[TUL.QUALITY.Heirloom]
   if color then
     border:SetVertexColor(color.r, color.g, color.b)
   end

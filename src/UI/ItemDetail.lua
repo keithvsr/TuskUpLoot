@@ -1,6 +1,8 @@
 -- Shared item detail panel (needs/has lists) used by Items and Raids tabs.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -112,7 +114,7 @@ local function renderNeedsList(needsRows, selectedItemId)
     if fr.markBtn then
       local markItemId = row.markItemId or selectedItemId
       fr.markBtn:SetScript("OnClick", function()
-        TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
+        TUL.DB.markItemAcquired(markItemId, row.characterKey)
         -- if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
         --   TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
         -- end
@@ -250,7 +252,7 @@ local function renderTierTokenNeedsList(rewardGroups)
       if fr.markBtn then
         local markItemId = row.markItemId or group.itemId
         fr.markBtn:SetScript("OnClick", function()
-          TuskUpLoot.DB.markItemAcquired(markItemId, row.characterKey)
+          TUL.DB.markItemAcquired(markItemId, row.characterKey)
           -- if TuskUpLoot.Net and TuskUpLoot.Net.broadcastItemAcquired then
           --   TuskUpLoot.Net.broadcastItemAcquired(markItemId, row.characterKey)
           -- end
@@ -326,8 +328,8 @@ function UI.renderSelectedItem()
     end
   end
 
-  local DB = TuskUpLoot.DB
-  local Data = TuskUpLoot.Data
+  local DB = TUL.DB
+  local Data = TUL.Data
   local selectedItemId = UI.selectedItemId
   local item = selectedItemId and DB and DB.getItem(selectedItemId)
   local needInfo = (selectedItemId and Data and Data.getItemNeedInfo)

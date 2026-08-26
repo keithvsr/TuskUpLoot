@@ -1,6 +1,8 @@
 -- Characters tab: left-rail character list + gear set detail panel.
 
-local UI = TuskUpLoot.UI
+local _, TUL = ...
+
+local UI = TUL.UI
 local Util = UI.Util
 local C = UI.Constants
 
@@ -42,7 +44,7 @@ local function applyCharacterRename(popup, data)
     return false
   end
 
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if DB and DB.renameCharacter(data.characterKey, newName) then
     UI.renderCharacterPanel()
     UI.rebuildCharacterList()
@@ -60,7 +62,7 @@ StaticPopupDialogs["TUSKUPLOOT_REMOVE_CHARACTER"] = {
     if not data or not data.characterKey then
       return
     end
-    local DB = TuskUpLoot.DB
+    local DB = TUL.DB
     if DB and DB.removeCharacter(data.characterKey) then
       if UI.selectedCharacterKey == data.characterKey then
         UI.setSelectedCharacter(nil)
@@ -252,8 +254,8 @@ local function bindCharacterListButton(btn, container, key, sortIndex, isSelecte
     container.charListDragBtn = nil
     Util.clearCharListDragVisuals(container)
 
-    if dragActive and dragKey and dropIndex and TuskUpLoot.DB then
-      TuskUpLoot.DB.moveCharacterInManualSort(dragKey, dropIndex)
+    if dragActive and dragKey and dropIndex and TUL.DB then
+      TUL.DB.moveCharacterInManualSort(dragKey, dropIndex)
       UI.rebuildCharacterList()
       return
     end
@@ -349,7 +351,7 @@ function UI.renderCharacterPanel()
 
   Util.layoutDetailScrollForTab("characters")
 
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if not DB then
     setCharacterSummary("TuskUpLoot: DB module not loaded.")
     clearCharGearContainer()
@@ -357,7 +359,7 @@ function UI.renderCharacterPanel()
     return
   end
 
-  if not TuskUpLoot.dbInitialized then
+  if not TUL.dbInitialized then
     DB.init()
   end
 
@@ -469,8 +471,8 @@ function UI.renderCharacterPanel()
             end
           end)
           headerRow.pushBtn:SetScript("OnClick", function()
-            if TuskUpLoot.Sync and TuskUpLoot.Sync.openPushGearSetPicker then
-              TuskUpLoot.Sync.openPushGearSetPicker(selectedKey, gsKeyCapture)
+            if TUL.Sync and TUL.Sync.openPushGearSetPicker then
+              TUL.Sync.openPushGearSetPicker(selectedKey, gsKeyCapture)
             end
           end)
           headerRow:Show()
@@ -577,8 +579,8 @@ function UI.renderSelectedCharacter()
 end
 
 function UI.resetManualCharacterOrder()
-  if TuskUpLoot.DB then
-    TuskUpLoot.DB.resetManualSortToDefault()
+  if TUL.DB then
+    TUL.DB.resetManualSortToDefault()
   end
   UI.rebuildCharacterList()
 end
@@ -589,8 +591,8 @@ function UI.setCharListSortBy(sortBy)
   end
   if sortBy == "manual" then
     UI.charListSortBy = "manual"
-    if TuskUpLoot.DB then
-      TuskUpLoot.DB.ensureManualSortList()
+    if TUL.DB then
+      TUL.DB.ensureManualSortList()
     end
   elseif UI.charListSortBy == sortBy then
     if sortBy == "name" then
@@ -613,7 +615,7 @@ function UI.rebuildCharacterList()
     return
   end
 
-  local DB = TuskUpLoot.DB
+  local DB = TUL.DB
   if not DB then
     return
   end
