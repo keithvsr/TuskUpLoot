@@ -1,7 +1,9 @@
 -- Addon option settings backed by TuskUpLootDB.opts.
 
-TuskUpLoot.Opts = TuskUpLoot.Opts or {}
-local Opts = TuskUpLoot.Opts
+local _, TUL = ...
+
+TUL.Opts = TUL.Opts or {}
+local Opts = TUL.Opts
 
 local DEFAULTS = {
   sendRaidChat = true,
