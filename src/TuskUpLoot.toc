@@ -2,6 +2,7 @@
 ## Title: TuskUpLoot
 ## Category: Loot
 ## Notes: TBC raid loot catalog and guild BIS import
+## IconTexture: Interface/Addons/TuskUpLoot/Media/TUL-list-icon-32.png
 ## Author: Kaaser-Nightslayer <Tusk Up>
 ## Version: @project-version@
 ## SavedVariables: TuskUpLootDB
@@ -14,6 +15,7 @@ Data/NPCs.lua
 Data/Objects.lua
 Data/Zones.lua
 Data/Instances.lua
+Data/InstanceTrash.lua
 Data/Encounters.lua
 Data/TierLinks.lua
 Data/Loot.lua

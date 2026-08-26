@@ -1,8 +1,9 @@
--- Tier token (boss drop) -> craftable tier armor piece IDs for need rollup.
+-- Drop item ID -> wishlist reward item IDs for need rollup.
+-- Covers tier tokens and quest-starting boss drops (players list rewards, not the drop).
 TuskUpLoot.Data = TuskUpLoot.Data or {}
 local Data = TuskUpLoot.Data
 
-Data.TierTokenResults = {
+Data.DropRewardResults = {
   -- Tier 4
   -- Fallen Champion (Paladin, Rogue, Shaman)
   [29763] = { 29043, 29037, 29070, 29075, 29031, 29047, 29064 },
@@ -73,14 +74,25 @@ Data.TierTokenResults = {
   [34855] = { 34556, 34554, 34555, 34557, 34558 },
   [34852] = { 34447, 34444, 34446, 34445, 34448 },
   [34858] = { 34571, 34574, 34572, 34575, 34573 },
+
+  -- Quest-starting boss drops (drop ID -> quest reward item IDs)
+  -- Add entries here, e.g.:
+  -- [DROP_ID] = { REWARD_ID_1, REWARD_ID_2 },
 }
 
+-- Back-compat alias for callers that still reference TierTokenResults.
+Data.TierTokenResults = Data.DropRewardResults
+
+function Data.getDropRewardResultIds(itemId)
+  return Data.DropRewardResults and Data.DropRewardResults[itemId]
+end
+
 function Data.getTierTokenResultIds(itemId)
-  return Data.TierTokenResults and Data.TierTokenResults[itemId]
+  return Data.getDropRewardResultIds(itemId)
 end
 
 function Data.getNeedRollupItemIds(itemId)
-  local linked = Data.getTierTokenResultIds(itemId)
+  local linked = Data.getDropRewardResultIds(itemId)
   if linked and #linked > 0 then
     return linked
   end

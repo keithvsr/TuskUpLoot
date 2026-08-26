@@ -30,6 +30,7 @@ local function raidReturnContext()
   return {
     tab = "raids",
     focusEncounterId = UI.focusEncounterId,
+    focusInstanceId = UI.focusInstanceId,
   }
 end
 
@@ -55,16 +56,29 @@ local function updateEncounterLootToggle()
     btn:Hide()
     return
   end
-  local trashBucket = TuskUpLoot.Data and TuskUpLoot.Data.TRASH_DROP_BUCKET
-  if trashBucket and UI.focusEncounterId == trashBucket then
-    btn:Hide()
-    return
-  end
   btn:Show()
   if UI.encounterLootView == "full" then
     btn:SetText("Actual drops")
   else
     btn:SetText("Full loot table")
+  end
+end
+
+local function selectTrash(instanceId)
+  local Data = TuskUpLoot.Data
+  local trashBucket = Data and Data.TRASH_DROP_BUCKET
+  if not trashBucket then
+    return
+  end
+  UI.focusInstanceId = instanceId
+  UI.focusEncounterId = trashBucket
+  UI.encounterLootView = "actual"
+  if Data and Data.requestInstanceItemData and instanceId then
+    Data.requestInstanceItemData(instanceId)
+  end
+  UI.rebuildRaidList()
+  if UI.activeTab == "raids" then
+    UI.renderEncounterLootPanel()
   end
 end
 
@@ -149,12 +163,16 @@ function UI.renderEncounterLootPanel()
   if Data then
     local state = Util.getRaidState()
     if isTrash then
+      local trashInstanceId = UI.focusInstanceId
       if UI.encounterLootView == "full" then
-        lootIds = {}
-        emptyMessage = "No catalog for trash."
-      else
+        lootIds = Data.getInstanceTrashLootIds(trashInstanceId)
+        emptyMessage = "No trash loot for this raid."
+      elseif trashInstanceId and trashInstanceId == state.InstanceId then
         local actualDrops = state.EncounterDrops and state.EncounterDrops[trashBucket] or {}
         lootIds, dropCounts = aggregateDropCounts(actualDrops)
+      else
+        lootIds = {}
+        emptyMessage = "No drops recorded yet."
       end
     elseif UI.encounterLootView == "full" then
       lootIds = Data.getEncounterLootIds(focusEnc)
@@ -322,12 +340,11 @@ function UI.rebuildRaidList()
         end
 
         local trashBucket = Data.TRASH_DROP_BUCKET
-        local trashDrops = trashBucket and state.EncounterDrops and state.EncounterDrops[trashBucket] or {}
-        if instanceId == state.InstanceId and trashBucket and #trashDrops > 0 then
+        if trashBucket then
           rowIndex = rowIndex + 1
           local trashRow = Util.getOrCreateRaidRow(container, rows, rowIndex)
           local trashLabel = "  • Trash"
-          if trashBucket == UI.focusEncounterId then
+          if trashBucket == UI.focusEncounterId and instanceId == UI.focusInstanceId then
             trashLabel = "|cffffff00" .. trashLabel .. "|r"
           end
 
@@ -336,9 +353,9 @@ function UI.rebuildRaidList()
           trashRow:SetPoint("RIGHT", container, "RIGHT", 0, 0)
           trashRow.text:SetPoint("LEFT", C.INDENT_ENCOUNTER + 4, 0)
 
-          local trashCapture = trashBucket
+          local trashInstCapture = instanceId
           trashRow:SetScript("OnClick", function()
-            selectEncounter(trashCapture)
+            selectTrash(trashInstCapture)
           end)
           trashRow.text:SetText(trashLabel)
           trashRow:Show()

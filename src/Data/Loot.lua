@@ -72,6 +72,13 @@ function Data.getEncounterLootIdsForSource(encounterId, sourceType, sourceId)
   return resolveLootSources(encounter, sourceType, sourceId)
 end
 
+function Data.getInstanceTrashLootIds(instanceId)
+  if not instanceId or not Data.InstanceTrashLoot then
+    return {}
+  end
+  return Data.InstanceTrashLoot[instanceId] or {}
+end
+
 function Data.getItemDisplayName(itemId)
   local ItemCache = TuskUpLoot.ItemCache
   if ItemCache and ItemCache.get then
@@ -359,6 +366,9 @@ function Data.requestInstanceItemData(instanceId)
     for _, itemId in ipairs(Data.getEncounterLootIds(encounterId)) do
       requestItemDataRecursive(itemId, seen)
     end
+  end
+  for _, itemId in ipairs(Data.getInstanceTrashLootIds(instanceId)) do
+    requestItemDataRecursive(itemId, seen)
   end
 end
 
