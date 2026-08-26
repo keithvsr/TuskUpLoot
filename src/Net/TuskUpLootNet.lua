@@ -1,7 +1,9 @@
 -- Net/TuskUpLootNet.lua
-local TUL = TuskUpLoot -- alias for brevity
-TUL.Net   = {}
+local _, TUL = ...
+
+TUL.Net = TUL.Net or {}
 local Net = TUL.Net
+
 LibStub("AceComm-3.0"):Embed(Net)
 
 local LibSerialize      = LibStub("LibSerialize")
@@ -188,7 +190,7 @@ local handlers = {}
 handlers[Net.MSG.LOOT_DROP] = function(sender, lootDropPayload)
     local payload = parseLootDropPayload(lootDropPayload)
     TUL.debugPrint(sender .. " reported loot drops for encounter " .. payload.dropBucket)
-    TuskUpLoot.mergeDrops(payload.dropBucket, payload.itemIds)
+    TUL.mergeDrops(payload.dropBucket, payload.itemIds)
 end
 
 --- @function handlers[Net.MSG.ITEM_ACQUIRED]
