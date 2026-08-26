@@ -1,7 +1,9 @@
 -- Tab-delimited addon message framing for guild sync.
 
-TuskUpLoot.SyncProtocol = TuskUpLoot.SyncProtocol or {}
-local Protocol = TuskUpLoot.SyncProtocol
+local _, TUL = ...
+
+TUL.SyncProtocol = TUL.SyncProtocol or {}
+local Protocol = TUL.SyncProtocol
 
 Protocol.PREFIX = "TULSync"
 
@@ -76,6 +78,7 @@ function Protocol.parse(message)
     return nil
   end
   if cmd == "O" then
+    if not fields or #fields < 7 then return nil end
     return {
       cmd = cmd,
       syncId = fields[2],
@@ -86,6 +89,7 @@ function Protocol.parse(message)
       label = fields[7],
     }
   elseif cmd == "A" or cmd == "D" then
+    if not fields or #fields < 2 then return nil end
     return { cmd = cmd, syncId = fields[2] }
   end
   return { cmd = cmd, fields = fields }
