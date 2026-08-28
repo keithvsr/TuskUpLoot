@@ -2,6 +2,7 @@
 -- Covers tier tokens and quest-starting boss drops (players list rewards, not the drop).
 local _, TUL = ...
 
+---@type TULData
 TUL.Data = TUL.Data or {}
 local Data = TUL.Data
 
@@ -82,15 +83,8 @@ Data.DropRewardResults = {
   -- [DROP_ID] = { REWARD_ID_1, REWARD_ID_2 },
 }
 
--- Back-compat alias for callers that still reference TierTokenResults.
-Data.TierTokenResults = Data.DropRewardResults
-
 function Data.getDropRewardResultIds(itemId)
   return Data.DropRewardResults and Data.DropRewardResults[itemId]
-end
-
-function Data.getTierTokenResultIds(itemId)
-  return Data.getDropRewardResultIds(itemId)
 end
 
 function Data.getNeedRollupItemIds(itemId)

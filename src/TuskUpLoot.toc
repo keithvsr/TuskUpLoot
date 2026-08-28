@@ -17,7 +17,7 @@ Data/Zones.lua
 Data/Instances.lua
 Data/InstanceTrash.lua
 Data/Encounters.lua
-Data/TierLinks.lua
+Data/DropRewards.lua
 Data/Loot.lua
 DB/TuskUpLootDB.lua
 Opts/TuskUpLootOpts.lua

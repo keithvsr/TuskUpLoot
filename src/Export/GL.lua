@@ -92,7 +92,7 @@ local function buildArmorToTokenMap()
   end
 
   local map = {}
-  local tierResults = Data and Data.TierTokenResults
+  local tierResults = Data and Data.DropRewardResults
   if tierResults then
     for tokenId, armorIds in pairs(tierResults) do
       for _, armorId in ipairs(armorIds) do
