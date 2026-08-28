@@ -1,6 +1,7 @@
 -- Per-raid trash loot catalog (item IDs that drop from trash, not bosses).
 local _, TUL = ...
 
+---@type TULData
 TUL.Data = TUL.Data or {}
 local Data = TUL.Data
 

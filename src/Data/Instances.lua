@@ -1,9 +1,8 @@
 local _, TUL = ...
 
+---@type TULData
 TUL.Data = TUL.Data or {}
 local Data = TUL.Data
-
-Data.Instances = Data.Instances or {}
 
 Data.Instances = {
     [532] = {

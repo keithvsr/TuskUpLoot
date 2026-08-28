@@ -6,10 +6,9 @@ Contains data for TBC Boss NPCs
 
 local _, TUL = ...
 
+---@type TULData
 TUL.Data = TUL.Data or {}
 local Data = TUL.Data
-
-Data.NPCs = Data.NPCs or {}
 
 Data.NPCs = {
     [15687] = {

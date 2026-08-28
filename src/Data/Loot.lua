@@ -1,7 +1,15 @@
 local _, TUL = ...
 
+---@type TULData
 TUL.Data = TUL.Data or {}
 local Data = TUL.Data
+
+Data.TRASH_DROP_BUCKET = "trash"
+
+Data.RAID_BROADCAST_EXCLUDED_ITEMS = {
+  [29434] = true, -- Badge of Justice
+  [30183] = true, -- Nether Vortex
+}
 
 local function appendDropsFromSource(lootIds, seen, sourceType, sourceId)
   if not sourceType or not sourceId then
@@ -29,6 +37,10 @@ local function appendDropsFromSource(lootIds, seen, sourceType, sourceId)
   end
 end
 
+---@param encounter Encounter
+---@param sourceType? "npc" | "object"
+---@param sourceId? number
+---@return number[]
 local function resolveLootSources(encounter, sourceType, sourceId)
   local lootIds = {}
   local seen = {}
@@ -56,92 +68,6 @@ local function resolveLootSources(encounter, sourceType, sourceId)
   return lootIds
 end
 
-function Data.getInstanceEncounterIds(instanceId)
-  local instance = Data.Instances and Data.Instances[instanceId]
-  if not instance or not instance.encounters then
-    return {}
-  end
-  return instance.encounters
-end
-
-function Data.getEncounterLootIds(encounterId)
-  local encounter = Data.Encounters and Data.Encounters[encounterId]
-  return resolveLootSources(encounter, nil, nil)
-end
-
-function Data.getEncounterLootIdsForSource(encounterId, sourceType, sourceId)
-  local encounter = Data.Encounters and Data.Encounters[encounterId]
-  return resolveLootSources(encounter, sourceType, sourceId)
-end
-
-function Data.getInstanceTrashLootIds(instanceId)
-  if not instanceId or not Data.InstanceTrashLoot then
-    return {}
-  end
-  return Data.InstanceTrashLoot[instanceId] or {}
-end
-
-function Data.getItemDisplayName(itemId)
-  local ItemCache = TUL.ItemCache
-  if ItemCache and ItemCache.get then
-    local cached = ItemCache.get(itemId)
-    if cached and cached.name then
-      return cached.name
-    end
-  end
-  local name = C_Item.GetItemNameByID(itemId)
-  if name then
-    return name
-  end
-  local catalog = Data.Items and Data.Items[itemId]
-  if catalog and catalog.name then
-    return catalog.name
-  end
-  return nil
-end
-
-Data.TRASH_DROP_BUCKET = "trash"
-
-Data.RAID_BROADCAST_EXCLUDED_ITEMS = {
-  [29434] = true, -- Badge of Justice
-  [30183] = true, -- Nether Vortex
-}
-
-function Data.isRaidBroadcastExcluded(itemId)
-  return itemId and Data.RAID_BROADCAST_EXCLUDED_ITEMS[itemId] or false
-end
-
-function Data.findEncounterForSource(instanceId, sourceType, sourceId)
-  if not instanceId or not sourceType or not sourceId then
-    return nil
-  end
-  for encId, enc in pairs(Data.Encounters or {}) do
-    if enc.instance_id == instanceId then
-      for _, source in ipairs(enc.loot or {}) do
-        local id = source.type == "npc" and source.npc_id or source.object_id
-        if source.type == sourceType and id == sourceId then
-          return encId
-        end
-      end
-    end
-  end
-  return nil
-end
-
-function Data.resolveDropBucket(instanceId, sourceType, sourceId, clearedEncounters)
-  local encounterId = Data.findEncounterForSource(instanceId, sourceType, sourceId)
-  if not encounterId then
-    return Data.TRASH_DROP_BUCKET
-  end
-  if not clearedEncounters or not next(clearedEncounters) then
-    return Data.TRASH_DROP_BUCKET
-  end
-  if not clearedEncounters[encounterId] then
-    return Data.TRASH_DROP_BUCKET
-  end
-  return encounterId
-end
-
 local function mergeGearSetRow(dest, gs)
   local key = gs.key
   for _, existing in ipairs(dest) do
@@ -150,6 +76,22 @@ local function mergeGearSetRow(dest, gs)
     end
   end
   dest[#dest + 1] = gs
+end
+
+local function requestItemDataRecursive(itemId, seen)
+  if not itemId or seen[itemId] then
+    return
+  end
+  seen[itemId] = true
+  if TUL.ItemCache and TUL.ItemCache.queue then
+    TUL.ItemCache.queue(itemId)
+  end
+
+  if Data.getNeedRollupItemIds then
+    for _, linkedId in ipairs(Data.getNeedRollupItemIds(itemId)) do
+      requestItemDataRecursive(linkedId, seen)
+    end
+  end
 end
 
 function Data.getAggregatedItemRollup(itemId)
@@ -195,6 +137,7 @@ function Data.getAggregatedItemRollup(itemId)
     end
   end
 
+  ---@type ItemRollup[]
   local result = {}
   for _, merged in pairs(byChar) do
     result[#result + 1] = merged
@@ -209,11 +152,11 @@ end
 
 function Data.getTierTokenNeedsByReward(tokenId)
   local DB = TUL.DB
-  if not DB or not DB.getItemRollup or not Data.getTierTokenResultIds then
+  if not DB or not DB.getItemRollup or not Data.getDropRewardResultIds then
     return nil
   end
 
-  local rewardIds = Data.getTierTokenResultIds(tokenId)
+  local rewardIds = Data.getDropRewardResultIds(tokenId)
   if not rewardIds or #rewardIds == 0 then
     return nil
   end
@@ -315,20 +258,83 @@ function Data.getItemNeedInfo(itemId)
   }
 end
 
-local function requestItemDataRecursive(itemId, seen)
-  if not itemId or seen[itemId] then
-    return
+function Data.getInstanceEncounterIds(instanceId)
+  local instance = Data.Instances and Data.Instances[instanceId]
+  if not instance or not instance.encounters then
+    return {}
   end
-  seen[itemId] = true
-  if TUL.ItemCache and TUL.ItemCache.queue then
-    TUL.ItemCache.queue(itemId)
-  end
+  return instance.encounters
+end
 
-  if Data.getNeedRollupItemIds then
-    for _, linkedId in ipairs(Data.getNeedRollupItemIds(itemId)) do
-      requestItemDataRecursive(linkedId, seen)
+function Data.getEncounterLootIds(encounterId)
+  local encounter = Data.Encounters and Data.Encounters[encounterId]
+  return resolveLootSources(encounter, nil, nil)
+end
+
+function Data.getEncounterLootIdsForSource(encounterId, sourceType, sourceId)
+  local encounter = Data.Encounters and Data.Encounters[encounterId]
+  return resolveLootSources(encounter, sourceType, sourceId)
+end
+
+function Data.getInstanceTrashLootIds(instanceId)
+  if not instanceId or not Data.InstanceTrashLoot then
+    return {}
+  end
+  return Data.InstanceTrashLoot[instanceId] or {}
+end
+
+function Data.getItemDisplayName(itemId)
+  local ItemCache = TUL.ItemCache
+  if ItemCache and ItemCache.get then
+    local cached = ItemCache.get(itemId)
+    if cached and cached.name then
+      return cached.name
     end
   end
+  local name = C_Item.GetItemNameByID(itemId)
+  if name then
+    return name
+  end
+  local catalog = Data.Items and Data.Items[itemId]
+  if catalog and catalog.name then
+    return catalog.name
+  end
+  return nil
+end
+
+function Data.isRaidBroadcastExcluded(itemId)
+  return itemId and Data.RAID_BROADCAST_EXCLUDED_ITEMS[itemId] or false
+end
+
+function Data.findEncounterForSource(instanceId, sourceType, sourceId)
+  if not instanceId or not sourceType or not sourceId then
+    return nil
+  end
+  for encId, enc in pairs(Data.Encounters or {}) do
+    if enc.instance_id == instanceId then
+      for _, source in ipairs(enc.loot or {}) do
+        local id = source.type == "npc" and source.npc_id or source.object_id
+        if source.type == sourceType and id == sourceId then
+          return encId
+        end
+      end
+    end
+  end
+  return nil
+end
+
+function Data.resolveDropBucket(instanceId, sourceType, sourceId, clearedEncounters)
+  local encounterId = Data.findEncounterForSource(instanceId, sourceType, sourceId)
+  if not encounterId then
+    return Data.TRASH_DROP_BUCKET
+  end
+  if not clearedEncounters or not next(clearedEncounters) then
+    return Data.TRASH_DROP_BUCKET
+  end
+  if not clearedEncounters[encounterId] then
+    return Data.TRASH_DROP_BUCKET
+  end
+  return encounterId
 end
 
 function Data.orderedInstanceIds()
