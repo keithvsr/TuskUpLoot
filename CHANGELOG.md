@@ -1,5 +1,10 @@
 # TuskUpLoot
 
+## 1.5.3
+- Removes general loot broadcast
+- Item broadcast of needs and the gearsets on-demand from item view
+- Gearset syncing fixes and clarifications
+
 ## 1.5.2
 - Adds instance trash loot bucket (previous only captured non-boss drops within raid)
 - Some fixes to quest items rewards (Verdant Sphere, etc) in lists
