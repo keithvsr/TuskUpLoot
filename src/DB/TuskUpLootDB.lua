@@ -175,6 +175,17 @@ local function mergeGearSetKeys(existing, incoming)
   return dedupeGearSetKeyList(merged)
 end
 
+local function mergeAcquiredFlag(existingAcquired, incomingAcquired)
+  return (existingAcquired and true) or (incomingAcquired and true) or false
+end
+
+local function copyIncomingCharacterItemMeta(charData)
+  return {
+    acquired = charData.acquired and true or false,
+    gearSets = dedupeGearSetKeyList(charData.gearSets),
+  }
+end
+
 local function upsertItem(itemId, item)
   ensureSavedVar()
   assert(itemId, "item ID is required to insert/update item")
@@ -201,11 +212,9 @@ local function upsertItem(itemId, item)
     for characterKey, charData in pairs(item.characters) do
       local itemCharTable = stored.characters[characterKey]
       if not itemCharTable then
-        stored.characters[characterKey] = charData or {}
+        stored.characters[characterKey] = copyIncomingCharacterItemMeta(charData or {})
       else
-        if charData.acquired and not itemCharTable.acquired then
-          itemCharTable.acquired = true
-        end
+        itemCharTable.acquired = mergeAcquiredFlag(itemCharTable.acquired, charData.acquired)
         if not itemCharTable.gearSets then
           itemCharTable.gearSets = {}
         end
@@ -372,6 +381,9 @@ function DB.upsertGearSet(characterKey, gearSetKey, gearSet)
     character.gearSets = {}
   end
   local isAnUpdate = character.gearSets[gearSetKey] ~= nil
+  if gearSet.updatedAt == nil then
+    gearSet.updatedAt = gearSet.importedAt or time()
+  end
   character.gearSets[gearSetKey] = gearSet
   return characterKey, character.gearSets[gearSetKey], isAnUpdate
 end
@@ -491,6 +503,12 @@ function DB.renameCharacter(characterKey, newName)
   return true
 end
 
+local function gearSetActivityAt(gearSet)
+  local updated = tonumber(gearSet and gearSet.updatedAt) or 0
+  local imported = tonumber(gearSet and gearSet.importedAt) or 0
+  return math.max(updated, imported)
+end
+
 function DB.characterLatestActivityAt(characterKey)
   ensureSavedVar()
   if type(characterKey) ~= "string" then
@@ -504,7 +522,7 @@ function DB.characterLatestActivityAt(characterKey)
 
   local latest = 0
   for _, gearSet in pairs(character.gearSets) do
-    local at = tonumber(gearSet and gearSet.importedAt) or 0
+    local at = gearSetActivityAt(gearSet)
     if at > latest then
       latest = at
     end
@@ -545,6 +563,40 @@ function DB.getItemAssociatedCharacters(itemId)
   return {}
 end
 
+local function gearSetContainsItem(gearSet, itemId)
+  if type(gearSet) ~= "table" or type(gearSet.items) ~= "table" or not itemId then
+    return false
+  end
+  for _, id in ipairs(gearSet.items) do
+    if id == itemId then
+      return true
+    end
+  end
+  for id in pairs(gearSet.items) do
+    if type(id) == "number" and id == itemId then
+      return true
+    end
+  end
+  return false
+end
+
+function DB.bumpGearSetsForItem(characterKey, itemId)
+  ensureSavedVar()
+  if type(characterKey) ~= "string" or not itemId then
+    return
+  end
+  local character = TuskUpLootDB.characters and TuskUpLootDB.characters[characterKey]
+  if not character or not character.gearSets then
+    return
+  end
+  local now = time()
+  for _, gearSet in pairs(character.gearSets) do
+    if gearSetContainsItem(gearSet, itemId) then
+      gearSet.updatedAt = now
+    end
+  end
+end
+
 function DB.setItemAcquired(itemId, characterKey, acquired)
   ensureSavedVar()
   if (TuskUpLootDB.items
@@ -552,6 +604,7 @@ function DB.setItemAcquired(itemId, characterKey, acquired)
         and TuskUpLootDB.items[itemId].characters
         and TuskUpLootDB.items[itemId].characters[characterKey]) then
     TuskUpLootDB.items[itemId].characters[characterKey].acquired = acquired and true or false
+    DB.bumpGearSetsForItem(characterKey, itemId)
     return true
   end
   return false
@@ -655,7 +708,7 @@ function DB.characterGearSets(characterKey)
     if not a or not b then
       return ka < kb
     end
-    return (tonumber(a.importedAt) or 0) > (tonumber(b.importedAt) or 0)
+    return gearSetActivityAt(a) > gearSetActivityAt(b)
   end)
 
   local ordered = {}
@@ -670,16 +723,23 @@ function DB.characterGearSets(characterKey)
   return ordered
 end
 
-local function copyGearSet(gearSet)
+local function copyGearSet(gearSet, touchUpdatedAt)
   if type(gearSet) ~= "table" then
     return nil
   end
+  local now = time()
   local copy = {
     name = gearSet.name,
     phase = gearSet.phase,
     importedAt = gearSet.importedAt,
+    updatedAt = gearSet.updatedAt,
     items = {},
   }
+  if touchUpdatedAt then
+    copy.updatedAt = now
+  elseif copy.updatedAt == nil and copy.importedAt ~= nil then
+    copy.updatedAt = copy.importedAt
+  end
   if type(gearSet.items) == "table" then
     for i, id in ipairs(gearSet.items) do
       copy.items[i] = id
@@ -710,11 +770,11 @@ function DB.mergeGearSetIfNewer(characterKey, gearSetKey, incomingGearSet)
   end
 
   local existing = character.gearSets[gearSetKey]
-  local incomingAt = tonumber(incomingGearSet.importedAt) or 0
-  local existingAt = existing and tonumber(existing.importedAt) or 0
+  local incomingAt = gearSetActivityAt(incomingGearSet)
+  local existingAt = gearSetActivityAt(existing)
 
   if incomingAt > existingAt then
-    character.gearSets[gearSetKey] = copyGearSet(incomingGearSet)
+    character.gearSets[gearSetKey] = copyGearSet(incomingGearSet, true)
     return true
   end
   return false
@@ -736,8 +796,38 @@ local function replaceGearSet(characterKey, gearSetKey, incomingGearSet)
     character.gearSets = {}
   end
 
-  character.gearSets[gearSetKey] = copyGearSet(incomingGearSet)
+  character.gearSets[gearSetKey] = copyGearSet(incomingGearSet, true)
   return true
+end
+
+local function mergeIncomingItemAcquired(itemId, item)
+  local storedItem = TuskUpLootDB.items and TuskUpLootDB.items[itemId]
+  if not storedItem or type(item) ~= "table" or type(item.characters) ~= "table" then
+    return
+  end
+  for characterKey, charMeta in pairs(item.characters) do
+    if type(charMeta) == "table" then
+      local existing = storedItem.characters and storedItem.characters[characterKey]
+      if existing then
+        charMeta.acquired = mergeAcquiredFlag(existing.acquired, charMeta.acquired)
+      end
+    end
+  end
+end
+
+local function upsertBundleItems(bundle, mergeMode)
+  local replace = (mergeMode == "replace")
+  local isFullBundle = bundle.mode == "FULL"
+  for itemId, item in pairs(bundle.items or {}) do
+    local shouldUpsert = replace or isFullBundle
+    if not shouldUpsert and type(item) == "table" and type(item.characters) == "table" then
+      shouldUpsert = next(item.characters) ~= nil
+    end
+    if shouldUpsert then
+      mergeIncomingItemAcquired(itemId, item)
+      upsertItem(itemId, item)
+    end
+  end
 end
 
 local function applySyncBundleInternal(bundle, mergeMode)
@@ -749,7 +839,6 @@ local function applySyncBundleInternal(bundle, mergeMode)
   local replace = (mergeMode == "replace")
   local updated = 0
   local skipped = 0
-  local updatedGearSets = {}
 
   local characters = bundle.characters or {}
   for characterKey, charData in pairs(characters) do
@@ -763,7 +852,6 @@ local function applySyncBundleInternal(bundle, mergeMode)
       DB.upsertCharacter(characterKey, meta)
 
       if type(charData.gearSets) == "table" then
-        updatedGearSets[characterKey] = updatedGearSets[characterKey] or {}
         for gearSetKey, gearSet in pairs(charData.gearSets) do
           local applied
           if replace then
@@ -773,7 +861,6 @@ local function applySyncBundleInternal(bundle, mergeMode)
           end
           if applied then
             updated = updated + 1
-            updatedGearSets[characterKey][gearSetKey] = true
           else
             skipped = skipped + 1
           end
@@ -782,32 +869,49 @@ local function applySyncBundleInternal(bundle, mergeMode)
     end
   end
 
-  local items = bundle.items or {}
-  local isFullBundle = bundle.mode == "FULL"
-  for itemId, item in pairs(items) do
-    local shouldUpsert = replace or isFullBundle
-    if not shouldUpsert and type(item) == "table" and type(item.characters) == "table" then
-      for characterKey, charMeta in pairs(item.characters) do
-        local charUpdated = updatedGearSets[characterKey]
-        if charUpdated and type(charMeta) == "table" then
-          for _, gsKey in ipairs(charMeta.gearSets or {}) do
-            if charUpdated[gsKey] then
-              shouldUpsert = true
-              break
-            end
-          end
-        end
-        if shouldUpsert then
-          break
-        end
-      end
-    end
-    if shouldUpsert then
-      upsertItem(itemId, item)
-    end
-  end
+  upsertBundleItems(bundle, mergeMode)
 
   return { updated = updated, skipped = skipped }
+end
+
+function DB.replaceGearSetFromSyncBundle(bundle, characterKey, gearSetKey)
+  ensureSavedVar()
+  if type(bundle) ~= "table" or type(characterKey) ~= "string" or type(gearSetKey) ~= "string" then
+    return { updated = 0, skipped = 0 }
+  end
+
+  local charData = bundle.characters and bundle.characters[characterKey]
+  local gearSet = charData and charData.gearSets and charData.gearSets[gearSetKey]
+  if not gearSet then
+    return { updated = 0, skipped = 0 }
+  end
+
+  DB.removeGearSet(characterKey, gearSetKey)
+
+  local meta = {
+    name = charData.name,
+    level = charData.level,
+    race = charData.race,
+    class = charData.class,
+  }
+  DB.upsertCharacter(characterKey, meta)
+  replaceGearSet(characterKey, gearSetKey, gearSet)
+  upsertBundleItems(bundle, "replace")
+
+  return { updated = 1, skipped = 0 }
+end
+
+function DB.replaceCharactersFromSyncBundle(bundle)
+  ensureSavedVar()
+  if type(bundle) ~= "table" then
+    return { updated = 0, skipped = 0 }
+  end
+
+  for characterKey in pairs(bundle.characters or {}) do
+    DB.removeCharacter(characterKey)
+  end
+
+  return applySyncBundleInternal(bundle, "replace")
 end
 
 function DB.applySyncBundle(bundle)

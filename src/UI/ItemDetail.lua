@@ -291,9 +291,30 @@ local function layoutItemDetailHeader(itemId, fallbackName)
     UI.itemIconBtn:Show()
     UI.detailLinkFS:ClearAllPoints()
     UI.detailLinkFS:SetPoint("LEFT", UI.itemIconBtn, "RIGHT", 10, 0)
-    local rightPad = (UI.detailBackBtn and UI.detailBackBtn:IsShown()) and -60 or -10
+    local rightPad = -10
+    if UI.detailBroadcastBtn and UI.detailBroadcastBtn:IsShown() then
+      rightPad = rightPad - 78
+    end
+    if UI.detailBackBtn and UI.detailBackBtn:IsShown() then
+      rightPad = rightPad - 60
+    end
     UI.detailLinkFS:SetPoint("RIGHT", UI.detailHeader, "RIGHT", rightPad, 0)
     Util.bindItemDetailShiftLinks(itemId)
+  end
+  if UI.detailBroadcastBtn then
+    UI.detailBroadcastBtn:Show()
+    if UI.detailBackBtn and UI.detailBackBtn:IsShown() then
+      UI.detailBroadcastBtn:ClearAllPoints()
+      UI.detailBroadcastBtn:SetPoint("TOPRIGHT", UI.detailBackBtn, "TOPLEFT", -4, 0)
+    else
+      UI.detailBroadcastBtn:ClearAllPoints()
+      UI.detailBroadcastBtn:SetPoint("TOPRIGHT", UI.detailHeader, "TOPRIGHT", 0, 0)
+    end
+    UI.detailBroadcastBtn:SetScript("OnClick", function()
+      if TUL.broadcastItemNeed then
+        TUL.broadcastItemNeed(itemId)
+      end
+    end)
   end
   UI.detailLinkFS:SetText(Util.getItemDisplayLink(itemId, fallbackName))
 end
@@ -343,6 +364,9 @@ function UI.renderSelectedItem()
   if not selectedItemId then
     if UI.itemIconBtn then
       UI.itemIconBtn:Hide()
+    end
+    if UI.detailBroadcastBtn then
+      UI.detailBroadcastBtn:Hide()
     end
     if UI.detailLinkHitBtn then
       UI.detailLinkHitBtn:Hide()

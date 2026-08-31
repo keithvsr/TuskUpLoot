@@ -210,12 +210,38 @@ local function applyInbound(syncId, ib, encoded)
   end
 
   local stats
-  if ib.replaceAll and DB.replaceFromSyncBundle then
-    stats = DB.replaceFromSyncBundle(bundle)
-    clearInbound(syncId)
-    TUL.chatPrint(string.format("Sync from %s replaced all saved data (%d gear set(s) applied).",
-      ib.sender or "unknown",
-      stats and stats.updated or 0))
+  if ib.replaceAll then
+    if ib.mode == "FULL" then
+      stats = DB.replaceFromSyncBundle(bundle)
+      clearInbound(syncId)
+      TUL.chatPrint(string.format("Sync from %s replaced all saved data (%d gear set(s) applied).",
+        ib.sender or "unknown",
+        stats and stats.updated or 0))
+    elseif ib.mode == "GEAR" and DB.replaceGearSetFromSyncBundle then
+      stats = DB.replaceGearSetFromSyncBundle(bundle, ib.charKey, ib.gearSetKey)
+      clearInbound(syncId)
+      TUL.chatPrint(string.format("Sync from %s replaced gear set %s (%d applied).",
+        ib.sender or "unknown",
+        ib.label or ib.gearSetKey or "unknown",
+        stats and stats.updated or 0))
+    elseif ib.mode == "PARTIAL" and DB.replaceCharactersFromSyncBundle then
+      stats = DB.replaceCharactersFromSyncBundle(bundle)
+      clearInbound(syncId)
+      TUL.chatPrint(string.format("Sync from %s replaced selected character(s) (%d gear set(s) applied).",
+        ib.sender or "unknown",
+        stats and stats.updated or 0))
+    elseif DB.applySyncBundle then
+      stats = DB.applySyncBundle(bundle)
+      clearInbound(syncId)
+      TUL.chatPrint(string.format("Sync from %s applied (%d gear set(s) updated, %d skipped).",
+        ib.sender or "unknown",
+        stats and stats.updated or 0,
+        stats and stats.skipped or 0))
+    else
+      TUL.chatPrint("Sync failed: database unavailable.")
+      clearInbound(syncId)
+      return
+    end
   elseif DB.applySyncBundle then
     stats = DB.applySyncBundle(bundle)
     clearInbound(syncId)

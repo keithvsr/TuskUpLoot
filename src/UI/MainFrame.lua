@@ -454,6 +454,13 @@ function UI.ensureFrame()
 
   UI.optionsContainer = optionsContainer
 
+  local detailBroadcastBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
+  detailBroadcastBtn:SetSize(72, 22)
+  detailBroadcastBtn:SetPoint("TOPRIGHT", detailHeader, "TOPRIGHT", 0, 0)
+  detailBroadcastBtn:SetText("Broadcast")
+  detailBroadcastBtn:Hide()
+  UI.detailBroadcastBtn = detailBroadcastBtn
+
   local backBtn = CreateFrame("Button", nil, detailHeader, "UIPanelButtonTemplate")
   backBtn:SetSize(52, 22)
   backBtn:SetPoint("TOPRIGHT", detailHeader, "TOPRIGHT", 0, 0)

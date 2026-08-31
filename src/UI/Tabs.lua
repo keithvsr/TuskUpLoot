@@ -163,6 +163,9 @@ local function updateTabVisibility()
   if UI.itemIconBtn then
     UI.itemIconBtn:SetShown(tab == "items" and UI.selectedItemId ~= nil)
   end
+  if UI.detailBroadcastBtn then
+    UI.detailBroadcastBtn:SetShown(tab == "items" and UI.selectedItemId ~= nil)
+  end
 
   if UI.charInfoHeader then
     UI.charInfoHeader:SetShown(tab == "characters")

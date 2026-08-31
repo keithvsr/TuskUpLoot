@@ -9,7 +9,7 @@ local Opts = TUL.Opts
 local OPTION_ROWS = {
   {
     key = "sendRaidChat",
-    label = "Send raid chat when loot drops",
+    label = "Enable raid chat need broadcasts",
     getter = function()
       return Opts and Opts.sendRaidChatEnabled and Opts.sendRaidChatEnabled()
     end,

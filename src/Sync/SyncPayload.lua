@@ -50,6 +50,7 @@ local function copyCharacter(char)
           name = gs.name,
           phase = gs.phase,
           importedAt = gs.importedAt,
+          updatedAt = gs.updatedAt,
           items = {},
         }
         if type(gs.items) == "table" then
