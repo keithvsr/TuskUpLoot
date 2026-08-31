@@ -47,4 +47,5 @@ UI/SyncPushFrame.lua
 UI/SyncOffer.lua
 UI/SyncPicker.lua
 UI/MainFrame.lua
+Chat/NeedBroadcast.lua
 TuskUpLoot.lua

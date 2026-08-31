@@ -400,57 +400,15 @@ local function updateLootMasterState()
   addon.State.IsLootMaster = IsInRaid() and IsMasterLooter()
 end
 
-local function collectRaidMemberKeys()
-  local keys = {}
-  if not IsInRaid() then
-    return keys
+function addon.broadcastItemNeed(itemId)
+  if TUL.NeedBroadcast and TUL.NeedBroadcast.send then
+    return TUL.NeedBroadcast.send(itemId)
   end
-  for i = 1, GetNumGroupMembers() do
-    local name = GetRaidRosterInfo(i)
-    if name then
-      keys[name:lower()] = name
-    end
-  end
-  local player = UnitName("player")
-  if player then
-    keys[player:lower()] = player
-  end
-  return keys
+  addon.chatPrint("Need broadcast is unavailable.")
+  return false
 end
 
-local function filterNeedInfoToRaid(needInfo, raidKeys)
-  local labels = {}
-  local seen = {}
-
-  if needInfo.hasRewardNeeds and needInfo.rewardGroups then
-    for _, group in ipairs(needInfo.rewardGroups) do
-      local pieceName = group.name or ("Item " .. tostring(group.itemId))
-      for _, row in ipairs(group.needs or {}) do
-        local key = row.characterKey
-        if key and raidKeys[key] and not seen[key] then
-          seen[key] = true
-          local who = row.who or raidKeys[key]
-          labels[#labels + 1] = string.format("%s (%s)", who, pieceName)
-        end
-      end
-    end
-  else
-    for _, row in ipairs(needInfo.needs or {}) do
-      local key = row.characterKey
-      if key and raidKeys[key] and not seen[key] then
-        seen[key] = true
-        labels[#labels + 1] = row.who or raidKeys[key]
-      end
-    end
-  end
-
-  table.sort(labels)
-  return labels
-end
-
-local function handleGroupLootStateChanged()
-  updateLootMasterState()
-end
+-- —— Event Handlers ———————————————————————————————————————————————————————————
 
 local function getPrimaryLootSourceGuid(lootInfo)
   for itemIdx = 1, #(lootInfo or {}) do
@@ -477,16 +435,9 @@ local function getSourceLedger(sourceGuid)
   return ledger
 end
 
-local function sendLootNeedMessage(msg, isLootMaster)
-  local Opts = addon.Opts
-  local sendRaidChat = not Opts or not Opts.sendRaidChatEnabled or Opts.sendRaidChatEnabled()
-  if isLootMaster and sendRaidChat then
-    C_ChatInfo.SendChatMessage(msg, "RAID")
-  end
-  -- addon.debugPrint(msg)  -- uncomment locally to debug without ML/RL
+local function handleGroupLootStateChanged()
+  updateLootMasterState()
 end
-
--- —— Event Handlers ———————————————————————————————————————————————————————————
 
 -- Begin ADDON_LOADED handler (fires on startup and reload)
 local function handleAddonLoaded(...)
@@ -618,7 +569,6 @@ local function handleLootOpened(...)
   local isLootMaster = addon.State.IsLootMaster or false
   local lootInfo = GetLootInfo()
   local lootThreshold = GetLootThreshold()
-  local raidKeys = collectRaidMemberKeys()
   local Data = addon.Data
 
   local sourceGuid = getPrimaryLootSourceGuid(lootInfo)
@@ -677,20 +627,10 @@ local function handleLootOpened(...)
   for _, slot in ipairs(collectedSlots) do
     local dropId = slot.itemId
     if ledger.items[dropId] then
-      -- addon.chatPrint("item already announced: " .. tostring(dropId))
+      -- already recorded for this source
     elseif not Data.isRaidBroadcastExcluded(dropId)
-        and isValidLoot(slot.locked, slot.quality, lootThreshold)
-        and Data.getItemNeedInfo then
+        and isValidLoot(slot.locked, slot.quality, lootThreshold) then
       broadcastIds[#broadcastIds + 1] = dropId
-      local needInfo = Data.getItemNeedInfo(dropId)
-      local neededBy = filterNeedInfoToRaid(needInfo, raidKeys)
-      local msg
-      if #neededBy > 0 then
-        msg = string.format("%s - needed by %s", slot.itemLink, table.concat(neededBy, ", "))
-      else
-        msg = string.format("%s - not needed by any raid member", slot.itemLink)
-      end
-      sendLootNeedMessage(msg, isLootMaster)
       ledger.items[dropId] = true
     end
   end
